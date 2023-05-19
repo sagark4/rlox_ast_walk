@@ -1,7 +1,7 @@
 use crate::token::Token;
 use crate::token_type::TokenType;
 use crate::token::Literal;
-pub(crate) fn scan_tokens(source: &str) -> Vec<Token>{
+pub(crate) fn scan_tokens(source: &str, had_error: &mut bool) -> Vec<Token>{
     let mut ans = Vec::new();
     ans.push(
         Token {
@@ -11,5 +11,7 @@ pub(crate) fn scan_tokens(source: &str) -> Vec<Token>{
             line: 42
         }
     );
+    println!("{}{}", source, had_error);
+    crate::error(42, "message", had_error);
     ans
 }

@@ -1,3 +1,4 @@
+use scanner::Scanner;
 use std::env;
 use std::fs::File;
 use std::io::{Read, Write};
@@ -34,15 +35,16 @@ fn run_file(file_name: &str) {
 
 fn run(source: &str) -> bool {
     let mut had_error = false;
-    let tokens: Vec<_> = scanner::scan_tokens(source, &mut had_error);
-    for token in tokens {
+    let mut scanner = Scanner::new(source, &mut had_error);
+    scanner.scan_tokens();
+    for token in scanner.tokens {
         println!("{:?}", token);
     }
     had_error
 }
 
 fn run_prompt() {
-let stdin = std::io::stdin();
+    let stdin = std::io::stdin();
     loop {
         print!("> ");
         _ = std::io::stdout().flush().unwrap();

@@ -15,11 +15,11 @@ pub(crate) enum TokenType {
 
     // One or two character tokens.
     Bang,
-    BangEQUAL,
+    BangEqual,
     Equal,
-    EqualEQUAL,
+    EqualEqual,
     Greater,
-    GreaterEQUAL,
+    GreaterEqual,
     Less,
     LessEqual,
 

@@ -1,6 +1,6 @@
 use std::env;
 use std::fs::File;
-use std::io::Read;
+use std::io::{Read, Write};
 mod scanner;
 mod token;
 mod token_type;
@@ -26,19 +26,33 @@ fn run_file(file_name: &str) {
     let mut file_contents = String::new();
     file.read_to_string(&mut file_contents)
         .expect(&format!("Error reading the file: {file_name}."));
-    run(&file_contents);
+    let had_error = run(&file_contents);
+    if had_error {
+        std::process::exit(65);
+    }
 }
 
-fn run(source: &str) {
+fn run(source: &str) -> bool {
     let mut had_error = false;
     let tokens: Vec<_> = scanner::scan_tokens(source, &mut had_error);
     for token in tokens {
         println!("{:?}", token);
     }
+    had_error
 }
 
 fn run_prompt() {
-    println!("> ");
+let stdin = std::io::stdin();
+    loop {
+        print!("> ");
+        _ = std::io::stdout().flush().unwrap();
+        let mut buffer = String::new();
+        match stdin.read_line(&mut buffer) {
+            Ok(0) => break,
+            Ok(_) => _ = run(&buffer),
+            Err(error) => println!("error: {error}"),
+        }
+    }
 }
 
 pub(crate) fn error(line: i32, message: &str, had_error: &mut bool) {

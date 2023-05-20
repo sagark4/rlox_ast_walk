@@ -62,11 +62,11 @@ fn run_prompt() {
     }
 }
 
-pub(crate) fn error(line: i32, message: &str) {
+pub(crate) fn error(line: usize, message: &str) {
     report(line, "", message);
 }
 
-pub(crate) fn report(line: i32, location: &str, message: &str) {
+pub(crate) fn report(line: usize, location: &str, message: &str) {
     eprintln!("[line {}] Error {}: {}", line, location, message);
     unsafe {
         HAD_ERROR = true;

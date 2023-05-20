@@ -36,7 +36,7 @@ pub(crate) enum TokenType {
     Fun,
     For,
     If,
-    Nil,
+    NilKeyword,
     Or,
     Print,
     Return,

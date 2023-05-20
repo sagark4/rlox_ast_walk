@@ -23,7 +23,7 @@ impl Scanner {
         keywords.insert(String::from("for"), For);
         keywords.insert(String::from("fun"), Fun);
         keywords.insert(String::from("if"), If);
-        keywords.insert(String::from("nil"), Nil);
+        keywords.insert(String::from("nil"), NilKeyword);
         keywords.insert(String::from("or"), Or);
         keywords.insert(String::from("print"), Print);
         keywords.insert(String::from("return"), Return);
@@ -48,12 +48,10 @@ impl Scanner {
             // We are at the beginning of the next lexeme.
             self.start = self.current;
             self.scan_token();
-
-            break; // currently it goes in infinite loop otherwise
         }
 
         self.tokens
-            .push(Token::from(Eof, String::from(""), Null, self.line));
+            .push(Token::from(Eof, String::from(""), NoneLiteral, self.line));
     }
 
     fn is_at_end(&self) -> bool {
@@ -210,7 +208,7 @@ impl Scanner {
     }
 
     fn add_token_null_literal(&mut self, token_type: TokenType) {
-        self.add_token(token_type, Null)
+        self.add_token(token_type, NoneLiteral)
     }
 
     fn add_token(&mut self, token_type: TokenType, literal: Literal) {

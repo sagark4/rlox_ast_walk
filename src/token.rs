@@ -3,7 +3,7 @@ use crate::token_type::TokenType;
 pub(crate) enum Literal {
     Float(f64),
     StringLiteral(String),
-    Null,
+    NoneLiteral,
 }
 #[derive(Debug)]
 pub(crate) struct Token {

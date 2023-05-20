@@ -3,22 +3,43 @@ use crate::token::Literal::*;
 use crate::token::Token;
 use crate::token_type::TokenType;
 use crate::token_type::TokenType::*;
+use std::collections::HashMap;
 pub(crate) struct Scanner {
     pub tokens: Vec<Token>,
     source_chars: Vec<char>,
     start: usize,
     current: usize,
     line: usize,
+    keywords: HashMap<String, TokenType>,
 }
 impl Scanner {
     pub(crate) fn new(source: &str) -> Self {
         let source_chars = source.chars().collect();
+        let mut keywords = HashMap::new();
+        keywords.insert(String::from("and"), And);
+        keywords.insert(String::from("class"), Class);
+        keywords.insert(String::from("else"), Else);
+        keywords.insert(String::from("false"), False);
+        keywords.insert(String::from("for"), For);
+        keywords.insert(String::from("fun"), Fun);
+        keywords.insert(String::from("if"), If);
+        keywords.insert(String::from("nil"), Nil);
+        keywords.insert(String::from("or"), Or);
+        keywords.insert(String::from("print"), Print);
+        keywords.insert(String::from("return"), Return);
+        keywords.insert(String::from("super"), Super);
+        keywords.insert(String::from("this"), This);
+        keywords.insert(String::from("true"), True);
+        keywords.insert(String::from("var"), Var);
+        keywords.insert(String::from("while"), While);
+
         Self {
             tokens: Vec::<Token>::new(),
             source_chars,
             start: 0,
             current: 0,
             line: 1,
+            keywords,
         }
     }
 
@@ -31,12 +52,8 @@ impl Scanner {
             break; // currently it goes in infinite loop otherwise
         }
 
-        self.tokens.push(Token {
-            token_type: Eof,
-            lexeme: String::from(""),
-            literal: Null,
-            line: self.line,
-        });
+        self.tokens
+            .push(Token::from(Eof, String::from(""), Null, self.line));
     }
 
     fn is_at_end(&self) -> bool {
@@ -94,9 +111,52 @@ impl Scanner {
             '\r' => (),
             '\t' => (),
             '"' => self.handle_string(),
-            _ => crate::error(self.line, "Unexpected character."),
+            r => {
+                if is_numeric(r) {
+                    self.handle_number();
+                } else if is_alpha(r) {
+                    self.handle_identifier();
+                } else {
+                    crate::error(self.line, &format!("Unexpected character: {r}."));
+                }
+            }
         }
     }
+
+    fn handle_identifier(&mut self) {
+        while is_alpha_numeric(self.peek()) {
+            self.advance();
+        }
+
+        let token_slice = &self.source_chars[self.start..self.current];
+        let text: String = token_slice.into_iter().collect();
+        match self.keywords.get(&text) {
+            None => self.add_token_null_literal(IdentifierLiteralToken),
+            Some(id) => self.add_token_null_literal(*id),
+        }
+    }
+
+    fn handle_number(&mut self) {
+        while self.peek().is_ascii_digit() {
+            self.advance();
+        }
+
+        // Look for a fractional part.
+        if self.peek() == '.' && self.peek_next().is_ascii_digit() {
+            // Consume the "."
+            self.advance();
+
+            while self.peek().is_ascii_digit() {
+                self.advance();
+            }
+        }
+
+        let token_slice = &self.source_chars[self.start..self.current];
+        let number_text: String = token_slice.into_iter().collect();
+
+        self.add_token(NumberLiteralToken, Float(number_text.parse().unwrap()));
+    }
+
     fn handle_string(&mut self) {
         while self.peek() != '"' && !self.is_at_end() {
             if self.peek() == '\n' {
@@ -135,6 +195,15 @@ impl Scanner {
             self.source_chars[self.current]
         }
     }
+
+    fn peek_next(&mut self) -> char {
+        if self.current + 1 >= self.source_chars.len() {
+            '\0'
+        } else {
+            self.source_chars[self.current + 1]
+        }
+    }
+
     fn advance(&mut self) -> char {
         self.current += 1;
         self.source_chars[self.current - 1]
@@ -148,11 +217,19 @@ impl Scanner {
         let token_slice = &self.source_chars[self.start..self.current];
         let text: String = token_slice.into_iter().collect();
 
-        self.tokens.push(Token {
-            token_type,
-            lexeme: text,
-            literal,
-            line: self.line,
-        });
+        self.tokens
+            .push(Token::from(token_type, text, literal, self.line));
     }
+}
+
+fn is_numeric(c: char) -> bool {
+    c.is_ascii_digit()
+}
+
+fn is_alpha(c: char) -> bool {
+    c.is_ascii_alphabetic() || c == '_'
+}
+
+fn is_alpha_numeric(c: char) -> bool {
+    is_alpha(c) || is_numeric(c)
 }

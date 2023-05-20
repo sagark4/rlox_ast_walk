@@ -1,4 +1,4 @@
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug)]
 pub(crate) enum TokenType {
     // Single-character tokens.
     LeftParen,

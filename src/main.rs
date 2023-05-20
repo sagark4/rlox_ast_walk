@@ -5,6 +5,8 @@ use std::io::{Read, Write};
 mod scanner;
 mod token;
 mod token_type;
+
+static mut HAD_ERROR: bool = false;
 fn main() {
     let args: Vec<_> = env::args().collect();
     if args.len() > 2 {
@@ -27,20 +29,20 @@ fn run_file(file_name: &str) {
     let mut file_contents = String::new();
     file.read_to_string(&mut file_contents)
         .expect(&format!("Error reading the file: {file_name}."));
-    let had_error = run(&file_contents);
-    if had_error {
-        std::process::exit(65);
+    run(&file_contents);
+    unsafe {
+        if HAD_ERROR {
+            std::process::exit(65);
+        }
     }
 }
 
-fn run(source: &str) -> bool {
-    let mut had_error = false;
-    let mut scanner = Scanner::new(source, &mut had_error);
+fn run(source: &str) {
+    let mut scanner = Scanner::new(source);
     scanner.scan_tokens();
     for token in scanner.tokens {
         println!("{:?}", token);
     }
-    had_error
 }
 
 fn run_prompt() {
@@ -54,14 +56,19 @@ fn run_prompt() {
             Ok(_) => _ = run(&buffer),
             Err(error) => println!("error: {error}"),
         }
+        unsafe {
+            HAD_ERROR = false;
+        }
     }
 }
 
-pub(crate) fn error(line: i32, message: &str, had_error: &mut bool) {
-    report(line, "", message, had_error);
+pub(crate) fn error(line: i32, message: &str) {
+    report(line, "", message);
 }
 
-pub(crate) fn report(line: i32, location: &str, message: &str, had_error: &mut bool) {
+pub(crate) fn report(line: i32, location: &str, message: &str) {
     eprintln!("[line {}] Error {}: {}", line, location, message);
-    *had_error = true;
+    unsafe {
+        HAD_ERROR = true;
+    }
 }

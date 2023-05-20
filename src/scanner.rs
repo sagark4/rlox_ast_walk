@@ -7,17 +7,15 @@ pub(crate) struct Scanner<'a> {
     start: usize,
     current: usize,
     line: usize,
-    had_error: &'a mut bool,
 }
 impl<'a> Scanner<'a> {
-    pub(crate) fn new(source: &'a str, had_error: &'a mut bool) -> Self {
+    pub(crate) fn new(source: &'a str) -> Self {
         Self {
             tokens: Vec::<Token>::new(),
             source,
             start: 0,
             current: 0,
             line: 1,
-            had_error,
         }
     }
 

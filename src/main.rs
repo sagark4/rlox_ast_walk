@@ -5,6 +5,7 @@ use std::io::{Read, Write};
 mod scanner;
 mod token;
 mod token_type;
+mod expr;
 
 static mut HAD_ERROR: bool = false;
 fn main() {

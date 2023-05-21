@@ -42,6 +42,17 @@ for td in type_desc:
         contents.append("    }")
         contents.append("}")
         contents.append("")
+        contents.append("impl<E: Expr> "+typ+"<E> {")
+        s = "    fn new("
+        for field in fields:
+            ftype = field.split()[0]
+            fname = field.split()[1]
+            if ftype == 'Expr':
+                s += fname+": E, "
+            else:
+                s += fname+": "+ftype+", "
+        s += ") -> Self{"
+        contents.append(s)
     else:
         contents.append("pub(crate) struct "+typ+" {")
         for field in fields:
@@ -56,6 +67,24 @@ for td in type_desc:
         contents.append("    }")
         contents.append("}")
         contents.append("")
+        contents.append("impl "+typ+" {")
+        s = "    fn new("
+        for field in fields:
+            ftype = field.split()[0]
+            fname = field.split()[1]
+            s += fname+": "+ftype+", "
+        s += ") -> Self{"
+        contents.append(s)
+    s = "        Self {"
+    for field in fields:
+        fname = field.split()[1]
+        s += fname + ", "
+    s += "}"
+    contents.append(s)
+    contents.append("    }")
+    contents.append("}")
+    contents.append("")
+
 with open('expr.rs', 'w', encoding="utf-8") as f:
     f.write("\n".join(contents))
     

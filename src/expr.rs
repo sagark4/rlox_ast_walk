@@ -1,5 +1,5 @@
-use crate::token::Token;
 use crate::token::Literal;
+use crate::token::Token;
 
 pub(crate) trait Expr {
     fn accept<R>(&self, visitor: &impl Visitor<R>) -> R;
@@ -24,6 +24,16 @@ impl<E: Expr> Expr for Binary<E> {
     }
 }
 
+impl<E: Expr> Binary<E> {
+    fn new(left: E, operator: Token, right: E) -> Self {
+        Self {
+            left,
+            operator,
+            right,
+        }
+    }
+}
+
 pub(crate) struct Grouping<E: Expr> {
     expression: E,
 }
@@ -31,6 +41,12 @@ pub(crate) struct Grouping<E: Expr> {
 impl<E: Expr> Expr for Grouping<E> {
     fn accept<R>(&self, visitor: &impl Visitor<R>) -> R {
         visitor.visit_grouping_expr(&self)
+    }
+}
+
+impl<E: Expr> Grouping<E> {
+    fn new(expression: E) -> Self {
+        Self { expression }
     }
 }
 
@@ -44,6 +60,12 @@ impl Expr for LiteralExpr {
     }
 }
 
+impl LiteralExpr {
+    fn new(value: Literal) -> Self {
+        Self { value }
+    }
+}
+
 pub(crate) struct Unary<E: Expr> {
     operator: Token,
     right: E,
@@ -52,5 +74,11 @@ pub(crate) struct Unary<E: Expr> {
 impl<E: Expr> Expr for Unary<E> {
     fn accept<R>(&self, visitor: &impl Visitor<R>) -> R {
         visitor.visit_unary_expr(&self)
+    }
+}
+
+impl<E: Expr> Unary<E> {
+    fn new(operator: Token, right: E) -> Self {
+        Self { operator, right }
     }
 }

@@ -2,10 +2,13 @@ use scanner::Scanner;
 use std::env;
 use std::fs::File;
 use std::io::{Read, Write};
+
+use ast_printer::AstPrinter;
+mod ast_printer;
+mod expr;
 mod scanner;
 mod token;
 mod token_type;
-mod expr;
 
 static mut HAD_ERROR: bool = false;
 fn main() {
@@ -17,6 +20,27 @@ fn main() {
     } else {
         run_prompt();
     }
+
+    let expression = expr::Binary::new(
+        expr::Unary::new(
+            token::Token::from(
+                token_type::TokenType::Minus,
+                String::from("-"),
+                token::Literal::NoneLiteral,
+                1,
+            ),
+            expr::LiteralExpr::new(token::Literal::Float(123.0f64)),
+        ),
+        token::Token::from(
+            token_type::TokenType::Star,
+            String::from("*"),
+            token::Literal::NoneLiteral,
+            1,
+        ),
+        expr::Grouping::new(expr::LiteralExpr::new(token::Literal::Float(45.67f64))),
+    );
+    let ast_printer = AstPrinter {};
+    println!("{}", ast_printer.print(&expression));
 }
 
 fn run_file(file_name: &str) {

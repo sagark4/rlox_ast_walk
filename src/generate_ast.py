@@ -31,9 +31,9 @@ for td in type_desc:
             ftype = field.split()[0]
             fname = field.split()[1]
             if ftype == 'Expr':
-                contents.append("    "+fname+": E,")
+                contents.append("    pub(crate)  "+fname+": E,")
             else:
-                contents.append("    "+fname+": "+ftype+",")
+                contents.append("    pub(crate)  "+fname+": "+ftype+",")
         contents.append("}")
         contents.append("")
         contents.append("impl<E: Expr> Expr for "+typ+"<E> {")
@@ -43,7 +43,7 @@ for td in type_desc:
         contents.append("}")
         contents.append("")
         contents.append("impl<E: Expr> "+typ+"<E> {")
-        s = "    fn new("
+        s = "    pub(crate) fn new("
         for field in fields:
             ftype = field.split()[0]
             fname = field.split()[1]
@@ -58,7 +58,7 @@ for td in type_desc:
         for field in fields:
             ftype = field.split()[0]
             fname = field.split()[1]
-            contents.append("    "+fname+": "+ftype+",")
+            contents.append("    pub(crate)  "+fname+": "+ftype+",")
         contents.append("}")
         contents.append("")
         contents.append("impl Expr for "+typ+" {")
@@ -68,7 +68,7 @@ for td in type_desc:
         contents.append("}")
         contents.append("")
         contents.append("impl "+typ+" {")
-        s = "    fn new("
+        s = "    pub(crate) fn new("
         for field in fields:
             ftype = field.split()[0]
             fname = field.split()[1]
@@ -85,6 +85,6 @@ for td in type_desc:
     contents.append("}")
     contents.append("")
 
-with open('expr.rs', 'w', encoding="utf-8") as f:
+with open('expr.prelim.rs', 'w', encoding="utf-8") as f:
     f.write("\n".join(contents))
     

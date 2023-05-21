@@ -1,5 +1,5 @@
-use crate::token::Token;
 use crate::token::Literal;
+use crate::token::Token;
 
 pub(crate) trait Expr {
     fn accept<R>(&self, visitor: &impl Visitor<R>) -> R;
@@ -13,9 +13,9 @@ pub(crate) trait Visitor<R> {
 }
 
 pub(crate) struct Binary<L, R> {
-    pub(crate)  left: L,
-    pub(crate)  operator: Token,
-    pub(crate)  right: R,
+    pub(crate) left: L,
+    pub(crate) operator: Token,
+    pub(crate) right: R,
 }
 
 impl<L: Expr, R: Expr> Expr for Binary<L, R> {
@@ -25,13 +25,17 @@ impl<L: Expr, R: Expr> Expr for Binary<L, R> {
 }
 
 impl<L: Expr, R: Expr> Binary<L, R> {
-    pub(crate) fn new(left: L, operator: Token, right: R, ) -> Self{
-        Self {left, operator, right, }
+    pub(crate) fn new(left: L, operator: Token, right: R) -> Self {
+        Self {
+            left,
+            operator,
+            right,
+        }
     }
 }
 
 pub(crate) struct Grouping<E: Expr> {
-    pub(crate)  expression: E,
+    pub(crate) expression: E,
 }
 
 impl<E: Expr> Expr for Grouping<E> {
@@ -41,13 +45,13 @@ impl<E: Expr> Expr for Grouping<E> {
 }
 
 impl<E: Expr> Grouping<E> {
-    pub(crate) fn new(expression: E, ) -> Self{
-        Self {expression, }
+    pub(crate) fn new(expression: E) -> Self {
+        Self { expression }
     }
 }
 
 pub(crate) struct LiteralExpr {
-    pub(crate)  value: Literal,
+    pub(crate) value: Literal,
 }
 
 impl Expr for LiteralExpr {
@@ -57,14 +61,14 @@ impl Expr for LiteralExpr {
 }
 
 impl LiteralExpr {
-    pub(crate) fn new(value: Literal, ) -> Self{
-        Self {value, }
+    pub(crate) fn new(value: Literal) -> Self {
+        Self { value }
     }
 }
 
 pub(crate) struct Unary<E: Expr> {
-    pub(crate)  operator: Token,
-    pub(crate)  right: E,
+    pub(crate) operator: Token,
+    pub(crate) right: E,
 }
 
 impl<E: Expr> Expr for Unary<E> {
@@ -74,7 +78,13 @@ impl<E: Expr> Expr for Unary<E> {
 }
 
 impl<E: Expr> Unary<E> {
-    pub(crate) fn new(operator: Token, right: E, ) -> Self{
-        Self {operator, right, }
+    pub(crate) fn new(operator: Token, right: E) -> Self {
+        Self { operator, right }
     }
+}
+
+pub(crate) fn test(ex: impl Expr) -> Grouping<impl Expr> {
+    let l = Grouping::new(ex);
+    println!("test");
+    l
 }

@@ -22,27 +22,36 @@ fn main() {
     }
 
     let expression = expr::Binary::new(
-        expr::Unary::new(
-            token::Token::from(
-                token_type::TokenType::Minus,
-                String::from("-"),
-                token::Literal::NoneLiteral,
-                1,
-            ),
-            expr::LiteralExpr::new(token::Literal::Float(123.0f64)),
-        ),
+        get_left(),
         token::Token::from(
             token_type::TokenType::Star,
             String::from("*"),
             token::Literal::NoneLiteral,
             1,
         ),
-        expr::Grouping::new(expr::LiteralExpr::new(token::Literal::Float(45.67f64))),
+        get_right(),
     );
     let ast_printer = AstPrinter {};
     println!("{}", ast_printer.print(&expression));
+    let l = expr::test(expression);
+    print!("")
 }
 
+fn get_left() -> impl expr::Expr {
+    expr::Unary::new(
+        token::Token::from(
+            token_type::TokenType::Minus,
+            String::from("-"),
+            token::Literal::NoneLiteral,
+            1,
+        ),
+        expr::LiteralExpr::new(token::Literal::Float(123.0f64)),
+    )
+}
+
+fn get_right() -> impl expr::Expr {
+    expr::Grouping::new(expr::LiteralExpr::new(token::Literal::Float(45.67f64)))
+}
 fn run_file(file_name: &str) {
     let mut file = match File::open(file_name) {
         Ok(file_handle) => file_handle,

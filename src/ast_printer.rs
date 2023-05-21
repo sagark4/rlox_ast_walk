@@ -28,6 +28,7 @@ impl AstPrinter {
         builder
     }
 }
+
 impl Visitor<String> for AstPrinter {
     fn visit_binary_expr<L: Expr, R: Expr>(&self, expr: &Binary<L, R>) -> String {
         self.parenthesize_two(&expr.operator.lexeme, &expr.left, &expr.right)

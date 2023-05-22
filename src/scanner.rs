@@ -5,7 +5,7 @@ use crate::token_type::TokenType;
 use crate::token_type::TokenType::*;
 use std::collections::HashMap;
 pub(crate) struct Scanner {
-    pub tokens: Vec<Token>,
+    pub(crate) tokens: Vec<Token>,
     source_chars: Vec<char>,
     start: usize,
     current: usize,
@@ -23,7 +23,7 @@ impl Scanner {
         keywords.insert(String::from("for"), For);
         keywords.insert(String::from("fun"), Fun);
         keywords.insert(String::from("if"), If);
-        keywords.insert(String::from("nil"), NilKeyword);
+        keywords.insert(String::from("nil"), NilTokenType);
         keywords.insert(String::from("or"), Or);
         keywords.insert(String::from("print"), Print);
         keywords.insert(String::from("return"), Return);

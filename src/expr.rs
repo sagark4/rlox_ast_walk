@@ -4,7 +4,7 @@ use crate::token::Literal;
 use crate::token::Token;
 
 pub(crate) enum VisitorReturnType {
-    VRString(String)
+    VRString(String),
 }
 pub(crate) trait Expr {
     fn accept(&self, visitor: Rc<dyn Visitor>) -> VisitorReturnType;
@@ -44,7 +44,7 @@ pub(crate) struct Grouping {
 }
 
 impl Expr for Grouping {
-    fn accept(&self, visitor: Rc<dyn Visitor>) ->  VisitorReturnType{
+    fn accept(&self, visitor: Rc<dyn Visitor>) -> VisitorReturnType {
         visitor.visit_grouping_expr(&self)
     }
 }
@@ -87,4 +87,3 @@ impl Unary {
         Self { operator, right }
     }
 }
-

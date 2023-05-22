@@ -1,12 +1,13 @@
+use parser::Parser;
 use scanner::Scanner;
 use std::env;
 use std::fs::File;
 use std::io::{Read, Write};
-use std::rc::Rc;
 
 use ast_printer::AstPrinter;
 mod ast_printer;
 mod expr;
+mod parser;
 mod scanner;
 mod token;
 mod token_type;
@@ -21,35 +22,6 @@ fn main() {
     } else {
         run_prompt();
     }
-
-    let expression = Rc::new(expr::Binary::new(
-        get_left(),
-        token::Token::from(
-            token_type::TokenType::Star,
-            String::from("*"),
-            token::Literal::NoneLiteral,
-            1,
-        ),
-        get_right(),
-    ));
-    let ast_printer = AstPrinter {};
-    println!("{}", ast_printer.print(expression));
-}
-
-fn get_left() -> Rc<dyn expr::Expr> {
-    Rc::new(expr::Unary::new(
-        token::Token::from(
-            token_type::TokenType::Minus,
-            String::from("-"),
-            token::Literal::NoneLiteral,
-            1,
-        ),
-        Rc::new(expr::LiteralExpr::new(token::Literal::Float(123.0f64))),
-    ))
-}
-
-fn get_right() -> Rc<dyn expr::Expr> {
-    Rc::new(expr::Grouping::new(Rc::new(expr::LiteralExpr::new(token::Literal::Float(45.67f64)))))
 }
 fn run_file(file_name: &str) {
     let mut file = match File::open(file_name) {
@@ -73,9 +45,9 @@ fn run_file(file_name: &str) {
 fn run(source: &str) {
     let mut scanner = Scanner::new(source);
     scanner.scan_tokens();
-    for token in scanner.tokens {
-        println!("{:?}", token);
-    }
+    let mut parser = Parser::from(scanner.tokens);
+    let ast_printer = AstPrinter {};
+    println!("{}", ast_printer.print(parser.parse()));
 }
 
 fn run_prompt() {

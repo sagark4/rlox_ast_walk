@@ -1,48 +1,69 @@
+use std::rc::Rc;
+
+use crate::expr::Visitor;
+use crate::expr::VisitorReturnType::*;
 use crate::expr::*;
 use crate::token::Literal::NoneLiteral;
+#[derive(Copy, Clone, Debug)]
 pub(crate) struct AstPrinter {}
 
 impl AstPrinter {
-    pub(crate) fn print(&self, expr: &impl Expr) -> String {
-        expr.accept::<String>(self)
+    pub(crate) fn print(&self, expr: Rc<dyn Expr>) -> String {
+        match expr.accept(Rc::new(*self)) {
+            VRString(s) => s,
+            _ => panic!(),
+        }
     }
     // I cannot put these two expressions in a vector because they are not object safe; so I have to prepare as many functions as there are children expressions!
-    fn parenthesize_two<L: Expr, R: Expr>(&self, name: &str, lexpr: &L, rexpr: &R) -> String {
+    fn parenthesize_two(&self, name: &str, lexpr: Rc<dyn Expr>, rexpr: Rc<dyn Expr>) -> String {
         let mut builder = String::new();
         builder.push('(');
-        builder.push_str(&lexpr.accept::<String>(self));
+        match lexpr.accept(Rc::new(*self)) {
+            VRString(s) => builder.push_str(&s),
+            _ => (),
+        }
         builder.push(' ');
         builder.push_str(name);
         builder.push(' ');
-        builder.push_str(&rexpr.accept::<String>(self));
+        match rexpr.accept(Rc::new(*self)) {
+            VRString(s) => builder.push_str(&s),
+            _ => (),
+        }
         builder.push(')');
         builder
     }
 
-    fn parenthesize_one<E: Expr>(&self, name: &str, expr: &E) -> String {
+    fn parenthesize_one(&self, name: &str, expr: Rc<dyn Expr>) -> String {
         let mut builder = String::new();
         builder.push('(');
         builder.push_str(name);
-        builder.push_str(&expr.accept::<String>(self));
+        match expr.accept(Rc::new(*self)) {
+            VRString(s) => builder.push_str(&s),
+            _ => (),
+        }
         builder.push(')');
         builder
     }
 }
 
-impl Visitor<String> for AstPrinter {
-    fn visit_binary_expr<L: Expr, R: Expr>(&self, expr: &Binary<L, R>) -> String {
-        self.parenthesize_two(&expr.operator.lexeme, &expr.left, &expr.right)
+impl Visitor for AstPrinter {
+    fn visit_binary_expr(&self, expr: &Binary) -> VisitorReturnType {
+        VisitorReturnType::VRString(self.parenthesize_two(
+            &expr.operator.lexeme,
+            Rc::clone(&expr.left),
+            Rc::clone(&expr.right),
+        ))
     }
-    fn visit_grouping_expr<E: Expr>(&self, expr: &Grouping<E>) -> String {
-        self.parenthesize_one("group ", &expr.expression)
+    fn visit_grouping_expr(&self, expr: &Grouping) -> VisitorReturnType {
+        VisitorReturnType::VRString(self.parenthesize_one("group ", Rc::clone(&expr.expression)))
     }
-    fn visit_literalexpr_expr(&self, expr: &LiteralExpr) -> String {
+    fn visit_literalexpr_expr(&self, expr: &LiteralExpr) -> VisitorReturnType {
         match expr.value {
-            NoneLiteral => String::from("nil"),
-            _ => format!("{:?}", expr.value),
+            NoneLiteral => VisitorReturnType::VRString(String::from("nil")),
+            _ => VisitorReturnType::VRString(format!("{:?}", expr.value)),
         }
     }
-    fn visit_unary_expr<E: Expr>(&self, expr: &Unary<E>) -> String {
-        self.parenthesize_one(&expr.operator.lexeme, &expr.right)
+    fn visit_unary_expr(&self, expr: &Unary) -> VisitorReturnType {
+        VisitorReturnType::VRString(self.parenthesize_one(&expr.operator.lexeme, Rc::clone(&expr.right)))
     }
 }

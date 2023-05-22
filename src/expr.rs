@@ -1,31 +1,36 @@
+use std::rc::Rc;
+
 use crate::token::Literal;
 use crate::token::Token;
 
+pub(crate) enum VisitorReturnType {
+    VRString(String)
+}
 pub(crate) trait Expr {
-    fn accept<R>(&self, visitor: &impl Visitor<R>) -> R;
+    fn accept(&self, visitor: Rc<dyn Visitor>) -> VisitorReturnType;
 }
 
-pub(crate) trait Visitor<R> {
-    fn visit_binary_expr<D: Expr, U: Expr>(&self, expr: &Binary<D, U>) -> R;
-    fn visit_grouping_expr<E: Expr>(&self, expr: &Grouping<E>) -> R;
-    fn visit_literalexpr_expr(&self, expr: &LiteralExpr) -> R;
-    fn visit_unary_expr<E: Expr>(&self, expr: &Unary<E>) -> R;
+pub(crate) trait Visitor {
+    fn visit_binary_expr(&self, expr: &Binary) -> VisitorReturnType;
+    fn visit_grouping_expr(&self, expr: &Grouping) -> VisitorReturnType;
+    fn visit_literalexpr_expr(&self, expr: &LiteralExpr) -> VisitorReturnType;
+    fn visit_unary_expr(&self, expr: &Unary) -> VisitorReturnType;
 }
 
-pub(crate) struct Binary<L, R> {
-    pub(crate) left: L,
+pub(crate) struct Binary {
+    pub(crate) left: Rc<dyn Expr>,
     pub(crate) operator: Token,
-    pub(crate) right: R,
+    pub(crate) right: Rc<dyn Expr>,
 }
 
-impl<L: Expr, R: Expr> Expr for Binary<L, R> {
-    fn accept<A>(&self, visitor: &impl Visitor<A>) -> A {
+impl Expr for Binary {
+    fn accept(&self, visitor: Rc<dyn Visitor>) -> VisitorReturnType {
         visitor.visit_binary_expr(&self)
     }
 }
 
-impl<L: Expr, R: Expr> Binary<L, R> {
-    pub(crate) fn new(left: L, operator: Token, right: R) -> Self {
+impl Binary {
+    pub(crate) fn new(left: Rc<dyn Expr>, operator: Token, right: Rc<dyn Expr>) -> Self {
         Self {
             left,
             operator,
@@ -34,18 +39,18 @@ impl<L: Expr, R: Expr> Binary<L, R> {
     }
 }
 
-pub(crate) struct Grouping<E: Expr> {
-    pub(crate) expression: E,
+pub(crate) struct Grouping {
+    pub(crate) expression: Rc<dyn Expr>,
 }
 
-impl<E: Expr> Expr for Grouping<E> {
-    fn accept<R>(&self, visitor: &impl Visitor<R>) -> R {
+impl Expr for Grouping {
+    fn accept(&self, visitor: Rc<dyn Visitor>) ->  VisitorReturnType{
         visitor.visit_grouping_expr(&self)
     }
 }
 
-impl<E: Expr> Grouping<E> {
-    pub(crate) fn new(expression: E) -> Self {
+impl Grouping {
+    pub(crate) fn new(expression: Rc<dyn Expr>) -> Self {
         Self { expression }
     }
 }
@@ -55,7 +60,7 @@ pub(crate) struct LiteralExpr {
 }
 
 impl Expr for LiteralExpr {
-    fn accept<R>(&self, visitor: &impl Visitor<R>) -> R {
+    fn accept(&self, visitor: Rc<dyn Visitor>) -> VisitorReturnType {
         visitor.visit_literalexpr_expr(&self)
     }
 }
@@ -66,25 +71,20 @@ impl LiteralExpr {
     }
 }
 
-pub(crate) struct Unary<E: Expr> {
+pub(crate) struct Unary {
     pub(crate) operator: Token,
-    pub(crate) right: E,
+    pub(crate) right: Rc<dyn Expr>,
 }
 
-impl<E: Expr> Expr for Unary<E> {
-    fn accept<R>(&self, visitor: &impl Visitor<R>) -> R {
+impl Expr for Unary {
+    fn accept(&self, visitor: Rc<dyn Visitor>) -> VisitorReturnType {
         visitor.visit_unary_expr(&self)
     }
 }
 
-impl<E: Expr> Unary<E> {
-    pub(crate) fn new(operator: Token, right: E) -> Self {
+impl Unary {
+    pub(crate) fn new(operator: Token, right: Rc<dyn Expr>) -> Self {
         Self { operator, right }
     }
 }
 
-pub(crate) fn test(ex: impl Expr) -> Grouping<impl Expr> {
-    let l = Grouping::new(ex);
-    println!("test");
-    l
-}

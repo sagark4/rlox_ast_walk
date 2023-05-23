@@ -3,8 +3,11 @@ use scanner::Scanner;
 use std::env;
 use std::fs::File;
 use std::io::{Read, Write};
+use token::Token;
 
 use ast_printer::AstPrinter;
+
+use crate::token_type::TokenType;
 mod ast_printer;
 mod expr;
 mod parser;
@@ -45,9 +48,15 @@ fn run_file(file_name: &str) {
 fn run(source: &str) {
     let mut scanner = Scanner::new(source);
     scanner.scan_tokens();
+    // for t in scanner.tokens.iter() {
+    //     println!("{:?}", t);
+    // }
     let mut parser = Parser::from(scanner.tokens);
     let ast_printer = AstPrinter {};
-    println!("{}", ast_printer.print(parser.parse()));
+    match parser.parse() {
+        Ok(expr) => println!("{}", ast_printer.print(expr)),
+        Err(_) => println!("Parse error."),
+    }
 }
 
 fn run_prompt() {
@@ -75,5 +84,16 @@ pub(crate) fn report(line: usize, location: &str, message: &str) {
     eprintln!("[line {}] Error {}: {}", line, location, message);
     unsafe {
         HAD_ERROR = true;
+    }
+}
+
+pub(crate) fn error_with_token(token: &Token, message: &str) {
+    if token.token_type == TokenType::Eof {
+        report(token.line, " at end", message);
+    } else {
+        let mut location = String::from(" at '");
+        location.push_str(&token.lexeme);
+        location.push_str("'");
+        report(token.line, &location, message);
     }
 }

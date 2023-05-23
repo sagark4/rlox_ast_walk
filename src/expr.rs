@@ -5,7 +5,43 @@ use crate::token::Token;
 
 pub(crate) enum VisitorReturnType {
     VRString(String),
+    VRLiteral(Literal),
 }
+
+impl VisitorReturnType {
+    pub(crate) fn get_vrt_bool_or_panic(&self) -> Self {
+        match self {
+            Self::VRLiteral(vrliteral) => {
+                Self::VRLiteral(Literal::BoolLiteral(!vrliteral.is_truthy()))
+            }
+            _ => panic!(), //TODO:
+        }
+    }
+
+    pub(crate) fn get_float_or_panic(&self) -> f64 {
+        match self {
+            Self::VRLiteral(vrliteral) => {
+                match vrliteral {
+                    Literal::Float(number) => *number,
+                    _ => panic!(), //TODO:
+                }
+            }
+            _ => panic!(), //TODO:
+        }
+    }
+
+    pub(crate) fn get_bool_or_panic(&self) -> bool {
+        match self {
+            Self::VRLiteral(vrliteral) => !vrliteral.is_truthy(),
+            _ => panic!(), //TODO:
+        }
+    }
+
+    pub(crate) fn wrap_float(value: f64) -> Self {
+        Self::VRLiteral(Literal::Float(value))
+    }
+}
+
 pub(crate) trait Expr {
     fn accept(&self, visitor: Rc<dyn Visitor>) -> VisitorReturnType;
 }

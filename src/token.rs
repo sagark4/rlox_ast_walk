@@ -6,6 +6,16 @@ pub(crate) enum Literal {
     BoolLiteral(bool),
     NoneLiteral,
 }
+impl Literal {
+    pub (crate) fn is_truthy(&self) -> bool {
+        match self {
+            Literal::NoneLiteral => false,
+            Literal::BoolLiteral(bool_val) => *bool_val,
+            _ => false,
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub(crate) struct Token {
     pub(crate) token_type: TokenType,

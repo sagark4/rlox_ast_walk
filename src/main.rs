@@ -1,3 +1,4 @@
+use interpreter::Interpreter;
 use parser::Parser;
 use scanner::Scanner;
 use std::env;
@@ -14,9 +15,11 @@ mod parser;
 mod scanner;
 mod token;
 mod token_type;
+mod interpreter;
 
 static mut HAD_ERROR: bool = false;
 fn main() {
+    let i = Interpreter{};
     let args: Vec<_> = env::args().collect();
     if args.len() > 2 {
         println!("Usage: rlox [script].");

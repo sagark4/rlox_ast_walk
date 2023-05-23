@@ -9,7 +9,7 @@ use crate::token_type::TokenType::*;
 pub(crate) struct Interpreter {}
 impl Interpreter {
     fn evaluate(&self, expr: &dyn Expr) -> VisitorReturnType {
-        expr.accept(Rc::new(*self))
+        expr.accept(self)
     }
 }
 

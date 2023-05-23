@@ -43,7 +43,7 @@ impl VisitorReturnType {
 }
 
 pub(crate) trait Expr {
-    fn accept(&self, visitor: Rc<dyn Visitor>) -> VisitorReturnType;
+    fn accept(&self, visitor: &dyn Visitor) -> VisitorReturnType;
 }
 
 pub(crate) trait Visitor {
@@ -60,7 +60,7 @@ pub(crate) struct Binary {
 }
 
 impl Expr for Binary {
-    fn accept(&self, visitor: Rc<dyn Visitor>) -> VisitorReturnType {
+    fn accept(&self, visitor: &dyn Visitor) -> VisitorReturnType {
         visitor.visit_binary_expr(&self)
     }
 }
@@ -80,7 +80,7 @@ pub(crate) struct Grouping {
 }
 
 impl Expr for Grouping {
-    fn accept(&self, visitor: Rc<dyn Visitor>) -> VisitorReturnType {
+    fn accept(&self, visitor: &dyn Visitor) -> VisitorReturnType {
         visitor.visit_grouping_expr(&self)
     }
 }
@@ -96,7 +96,7 @@ pub(crate) struct LiteralExpr {
 }
 
 impl Expr for LiteralExpr {
-    fn accept(&self, visitor: Rc<dyn Visitor>) -> VisitorReturnType {
+    fn accept(&self, visitor: &dyn Visitor) -> VisitorReturnType {
         visitor.visit_literalexpr_expr(&self)
     }
 }
@@ -113,7 +113,7 @@ pub(crate) struct Unary {
 }
 
 impl Expr for Unary {
-    fn accept(&self, visitor: Rc<dyn Visitor>) -> VisitorReturnType {
+    fn accept(&self, visitor: &dyn Visitor) -> VisitorReturnType {
         visitor.visit_unary_expr(&self)
     }
 }

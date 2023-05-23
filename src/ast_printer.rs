@@ -9,7 +9,7 @@ pub(crate) struct AstPrinter {}
 
 impl AstPrinter {
     pub(crate) fn print(&self, expr: Rc<dyn Expr>) -> String {
-        match expr.accept(Rc::new(*self)) {
+        match expr.accept(self) {
             VRString(s) => s,
             _ => panic!(),
         }
@@ -18,14 +18,14 @@ impl AstPrinter {
     fn parenthesize_two(&self, name: &str, lexpr: Rc<dyn Expr>, rexpr: Rc<dyn Expr>) -> String {
         let mut builder = String::new();
         builder.push('(');
-        match lexpr.accept(Rc::new(*self)) {
+        match lexpr.accept(self) {
             VRString(s) => builder.push_str(&s),
             _ => (),
         }
         builder.push(' ');
         builder.push_str(name);
         builder.push(' ');
-        match rexpr.accept(Rc::new(*self)) {
+        match rexpr.accept(self) {
             VRString(s) => builder.push_str(&s),
             _ => (),
         }
@@ -37,7 +37,7 @@ impl AstPrinter {
         let mut builder = String::new();
         builder.push('(');
         builder.push_str(name);
-        match expr.accept(Rc::new(*self)) {
+        match expr.accept(self) {
             VRString(s) => builder.push_str(&s),
             _ => (),
         }

@@ -7,12 +7,36 @@ pub(crate) enum Literal {
     NoneLiteral,
 }
 impl Literal {
-    pub (crate) fn is_truthy(&self) -> bool {
+    pub(crate) fn is_truthy(&self) -> bool {
         match self {
-            Literal::NoneLiteral => false,
-            Literal::BoolLiteral(bool_val) => *bool_val,
+            Self::NoneLiteral => false,
+            Self::BoolLiteral(bool_val) => *bool_val,
             _ => false,
         }
+    }
+
+    pub(crate) fn is_equal(&self, other: &Self) -> bool {
+        if let Self::NoneLiteral = self {
+            if let Self::NoneLiteral = other {
+                return true;
+            }
+        }
+        if let Self::Float(fself) = self {
+            if let Self::Float(fother) = other {
+                return fself == fother;
+            }
+        }
+        if let Self::BoolLiteral(bself) = self {
+            if let Self::BoolLiteral(bother) = other {
+                return bself == bother;
+            }
+        }
+        if let Self::StringLiteral(sself) = self {
+            if let Self::StringLiteral(sother) = other {
+                return sself == sother;
+            }
+        }
+        return false;
     }
 }
 

@@ -1,5 +1,4 @@
 use std::borrow::Borrow;
-use std::rc::Rc;
 
 use crate::expr::Visitor;
 use crate::expr::VisitorReturnType::*;

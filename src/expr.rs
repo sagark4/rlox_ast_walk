@@ -1,5 +1,3 @@
-use std::rc::Rc;
-
 use crate::token::Literal;
 use crate::token::Token;
 
@@ -9,36 +7,82 @@ pub(crate) enum VisitorReturnType {
 }
 
 impl VisitorReturnType {
-    pub(crate) fn get_vrt_bool_or_panic(&self) -> Self {
+    pub(crate) fn unwrap_negate_and_wrap_vrl_bool(&self) -> Self {
         match self {
             Self::VRLiteral(vrliteral) => {
                 Self::VRLiteral(Literal::BoolLiteral(!vrliteral.is_truthy()))
             }
-            _ => panic!(), //TODO:
+            _ => panic!(),
         }
     }
 
-    pub(crate) fn get_float_or_panic(&self) -> f64 {
+    pub(crate) fn unwrap_float(&self) -> f64 {
         match self {
-            Self::VRLiteral(vrliteral) => {
-                match vrliteral {
-                    Literal::Float(number) => *number,
-                    _ => panic!(), //TODO:
-                }
-            }
-            _ => panic!(), //TODO:
+            Self::VRLiteral(vrliteral) => match vrliteral {
+                Literal::Float(number) => *number,
+                _ => panic!(),
+            },
+            _ => panic!(),
         }
     }
 
-    pub(crate) fn get_bool_or_panic(&self) -> bool {
+    // pub(crate) fn unwrap_bool(&self) -> bool {
+    //     match self {
+    //         Self::VRLiteral(vrliteral) => !vrliteral.is_truthy(),
+    //         _ => panic!(),
+    //     }
+    // }
+
+    pub(crate) fn unwrap_str_literal(&self) -> &str {
         match self {
-            Self::VRLiteral(vrliteral) => !vrliteral.is_truthy(),
-            _ => panic!(), //TODO:
+            Self::VRLiteral(vrliteral) => match vrliteral {
+                Literal::StringLiteral(str_literal) => &str_literal,
+                _ => panic!(),
+            },
+            _ => panic!(),
         }
     }
 
     pub(crate) fn wrap_float(value: f64) -> Self {
         Self::VRLiteral(Literal::Float(value))
+    }
+
+    pub(crate) fn wrap_string_literal(value: String) -> Self {
+        Self::VRLiteral(Literal::StringLiteral(value))
+    }
+
+    pub(crate) fn wrap_bool(value: bool) -> Self {
+        Self::VRLiteral(Literal::BoolLiteral(value))
+    }
+
+    // pub(crate) fn is_float(&self) -> bool {
+    //     match self {
+    //         Self::VRLiteral(vrliteral) => match vrliteral {
+    //             Literal::Float(_) => true,
+    //             _ => false,
+    //         },
+    //         _ => false,
+    //     }
+    // }
+
+    pub(crate) fn is_string(&self) -> bool {
+        match self {
+            Self::VRLiteral(vrliteral) => match vrliteral {
+                Literal::StringLiteral(_) => true,
+                _ => false,
+            },
+            _ => false,
+        }
+    }
+
+    pub(crate) fn is_vrl_equal_or_panic(&self, other: &Self) -> bool{
+
+        if let Self::VRLiteral(fself) = self {
+            if let Self::VRLiteral(fother) = other {
+                return fself.is_equal(fother);
+            }
+        }
+        panic!();
     }
 }
 

@@ -12,15 +12,14 @@ use ast_printer::AstPrinter;
 use crate::token_type::TokenType;
 mod ast_printer;
 mod expr;
+mod interpreter;
 mod parser;
 mod scanner;
 mod token;
 mod token_type;
-mod interpreter;
 
 static mut HAD_ERROR: bool = false;
 fn main() {
-    let i = Interpreter{};
     let args: Vec<_> = env::args().collect();
     if args.len() > 2 {
         println!("Usage: rlox [script].");
@@ -58,7 +57,10 @@ fn run(source: &str) {
     let mut parser = Parser::from(scanner.tokens);
     let ast_printer = AstPrinter {};
     match parser.parse() {
-        Ok(expr) => println!("{}", ast_printer.print(expr.borrow())),
+        Ok(expr) => {
+            println!("{}", ast_printer.print(expr.borrow()));
+            println!("{:?}", Interpreter {}.evaluate_get_literal(expr.borrow()));
+        }
         Err(_) => println!("Parse error."),
     }
 }

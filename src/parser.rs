@@ -1,7 +1,7 @@
+use crate::error_with_token;
 use crate::expr::{Binary, Grouping, LiteralExpr, Unary};
 use crate::token::Literal::*;
 use crate::token_type::TokenType::{self, *};
-use crate::{error_with_token, expr, token};
 use crate::{expr::Expr, token::Token};
 
 pub(crate) struct Parser {

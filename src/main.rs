@@ -1,6 +1,7 @@
 use interpreter::Interpreter;
 use parser::Parser;
 use scanner::Scanner;
+use std::borrow::Borrow;
 use std::env;
 use std::fs::File;
 use std::io::{Read, Write};
@@ -57,7 +58,7 @@ fn run(source: &str) {
     let mut parser = Parser::from(scanner.tokens);
     let ast_printer = AstPrinter {};
     match parser.parse() {
-        Ok(expr) => println!("{}", ast_printer.print(expr)),
+        Ok(expr) => println!("{}", ast_printer.print(expr.borrow())),
         Err(_) => println!("Parse error."),
     }
 }

@@ -54,9 +54,9 @@ pub(crate) trait Visitor {
 }
 
 pub(crate) struct Binary {
-    pub(crate) left: Rc<dyn Expr>,
+    pub(crate) left: Box<dyn Expr>,
     pub(crate) operator: Token,
-    pub(crate) right: Rc<dyn Expr>,
+    pub(crate) right: Box<dyn Expr>,
 }
 
 impl Expr for Binary {
@@ -66,17 +66,17 @@ impl Expr for Binary {
 }
 
 impl Binary {
-    pub(crate) fn new(left: Rc<dyn Expr>, operator: Token, right: Rc<dyn Expr>) -> Self {
-        Self {
+    pub(crate) fn new(left: Box<dyn Expr>, operator: Token, right: Box<dyn Expr>) -> Box<Self> {
+        Box::new(Self {
             left,
             operator,
             right,
-        }
+        })
     }
 }
 
 pub(crate) struct Grouping {
-    pub(crate) expression: Rc<dyn Expr>,
+    pub(crate) expression: Box<dyn Expr>,
 }
 
 impl Expr for Grouping {
@@ -86,8 +86,8 @@ impl Expr for Grouping {
 }
 
 impl Grouping {
-    pub(crate) fn new(expression: Rc<dyn Expr>) -> Self {
-        Self { expression }
+    pub(crate) fn new(expression: Box<dyn Expr>) -> Box<Self> {
+        Box::new(Self { expression })
     }
 }
 
@@ -102,14 +102,14 @@ impl Expr for LiteralExpr {
 }
 
 impl LiteralExpr {
-    pub(crate) fn new(value: Literal) -> Self {
-        Self { value }
+    pub(crate) fn new(value: Literal) -> Box<Self> {
+        Box::new(Self { value })
     }
 }
 
 pub(crate) struct Unary {
     pub(crate) operator: Token,
-    pub(crate) right: Rc<dyn Expr>,
+    pub(crate) right: Box<dyn Expr>,
 }
 
 impl Expr for Unary {
@@ -119,7 +119,7 @@ impl Expr for Unary {
 }
 
 impl Unary {
-    pub(crate) fn new(operator: Token, right: Rc<dyn Expr>) -> Self {
-        Self { operator, right }
+    pub(crate) fn new(operator: Token, right: Box<dyn Expr>) -> Box<Self> {
+        Box::new(Self { operator, right })
     }
 }

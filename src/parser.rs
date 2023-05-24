@@ -3,7 +3,6 @@ use crate::token::Literal::*;
 use crate::token_type::TokenType::{self, *};
 use crate::{error_with_token, expr, token};
 use crate::{expr::Expr, token::Token};
-use std::rc::Rc;
 
 pub(crate) struct Parser {
     tokens: Vec<Token>,
@@ -11,7 +10,7 @@ pub(crate) struct Parser {
 }
 
 pub(crate) struct ParseError {}
-type ExprResult = Result<Rc<dyn Expr>, ParseError>;
+type ExprResult = Result<Box<dyn Expr>, ParseError>;
 
 impl Parser {
     pub(crate) fn from(tokens: Vec<Token>) -> Self {
@@ -28,11 +27,7 @@ impl Parser {
         while self.match_next_token_type(vec![BangEqual, EqualEqual]) {
             let operator = self.previous();
             let right = self.comparison()?;
-            expr = Rc::new(Binary::new(
-                Rc::clone(&expr),
-                operator.clone(),
-                Rc::clone(&right),
-            ));
+            expr = Binary::new(expr, operator.clone(), right);
         }
         Ok(expr)
     }
@@ -72,11 +67,7 @@ impl Parser {
         while self.match_next_token_type(vec![Greater, GreaterEqual, Less, LessEqual]) {
             let operator = self.previous();
             let right = self.term()?;
-            expr = Rc::new(Binary::new(
-                Rc::clone(&expr),
-                operator.clone(),
-                Rc::clone(&right),
-            ));
+            expr = Binary::new(expr, operator.clone(), right);
         }
         Ok(expr)
     }
@@ -85,11 +76,7 @@ impl Parser {
         while self.match_next_token_type(vec![Minus, Plus]) {
             let operator = self.previous();
             let right = self.factor()?;
-            expr = Rc::new(Binary::new(
-                Rc::clone(&expr),
-                operator.clone(),
-                Rc::clone(&right),
-            ));
+            expr = Binary::new(expr, operator.clone(), right);
         }
         Ok(expr)
     }
@@ -98,11 +85,7 @@ impl Parser {
         while self.match_next_token_type(vec![Slash, Star]) {
             let operator = self.previous();
             let right = self.unary()?;
-            expr = Rc::new(Binary::new(
-                Rc::clone(&expr),
-                operator.clone(),
-                Rc::clone(&right),
-            ));
+            expr = Binary::new(expr, operator.clone(), right);
         }
         Ok(expr)
     }
@@ -110,28 +93,28 @@ impl Parser {
         if self.match_next_token_type(vec![Bang, Minus]) {
             let operator = self.previous();
             let right = self.unary()?;
-            Ok(Rc::new(Unary::new(operator.clone(), Rc::clone(&right))))
+            Ok(Unary::new(operator.clone(), right))
         } else {
             self.primary()
         }
     }
     fn primary(&mut self) -> ExprResult {
         if self.match_next_token_type(vec![False]) {
-            return Ok(Rc::new(LiteralExpr::new(BoolLiteral(false))));
+            return Ok(LiteralExpr::new(BoolLiteral(false)));
         }
         if self.match_next_token_type(vec![True]) {
-            return Ok(Rc::new(LiteralExpr::new(BoolLiteral(true))));
+            return Ok(LiteralExpr::new(BoolLiteral(true)));
         }
         if self.match_next_token_type(vec![NilTokenType]) {
-            return Ok(Rc::new(LiteralExpr::new(NoneLiteral)));
+            return Ok(LiteralExpr::new(NoneLiteral));
         }
         if self.match_next_token_type(vec![NumberLiteralToken, StringLiteralToken]) {
-            return Ok(Rc::new(LiteralExpr::new(self.previous().literal)));
+            return Ok(LiteralExpr::new(self.previous().literal));
         }
         if self.match_next_token_type(vec![LeftParen]) {
             let expr = self.expression()?;
             self.consume(RightParen, "Expect ')' after expression.")?;
-            return Ok(Rc::new(Grouping::new(expr)));
+            return Ok(Grouping::new(expr));
         }
         Err(ParseError {})
     }

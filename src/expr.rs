@@ -1,13 +1,18 @@
 use crate::interpreter::RuntimeError;
 use crate::token::Literal;
 use crate::token::Token;
-pub(crate) enum VisitorReturnType {
+pub(crate) enum VisitorReturnOk {
     VRString(String),
     VRLiteral(Literal),
-    VRErr(RuntimeError),
 }
 
-impl VisitorReturnType {
+pub(crate) enum VisitorReturnError {
+    VRRuntimeErr(RuntimeError),
+}
+
+pub(crate) type VisitorReturnResult = Result<VisitorReturnOk, VisitorReturnError>;
+
+impl VisitorReturnOk {
     pub(crate) fn unwrap_negate_and_wrap_vrl_bool(&self) -> Self {
         match self {
             Self::VRLiteral(vrliteral) => {
@@ -68,14 +73,14 @@ impl VisitorReturnType {
 }
 
 pub(crate) trait Expr {
-    fn accept(&self, visitor: &dyn Visitor) -> VisitorReturnType;
+    fn accept(&self, visitor: &dyn Visitor) -> VisitorReturnResult;
 }
 
 pub(crate) trait Visitor {
-    fn visit_binary_expr(&self, expr: &Binary) -> VisitorReturnType;
-    fn visit_grouping_expr(&self, expr: &Grouping) -> VisitorReturnType;
-    fn visit_literalexpr_expr(&self, expr: &LiteralExpr) -> VisitorReturnType;
-    fn visit_unary_expr(&self, expr: &Unary) -> VisitorReturnType;
+    fn visit_binary_expr(&self, expr: &Binary) -> VisitorReturnResult;
+    fn visit_grouping_expr(&self, expr: &Grouping) -> VisitorReturnResult;
+    fn visit_literalexpr_expr(&self, expr: &LiteralExpr) -> VisitorReturnResult;
+    fn visit_unary_expr(&self, expr: &Unary) -> VisitorReturnResult;
 }
 
 pub(crate) struct Binary {
@@ -85,7 +90,7 @@ pub(crate) struct Binary {
 }
 
 impl Expr for Binary {
-    fn accept(&self, visitor: &dyn Visitor) -> VisitorReturnType {
+    fn accept(&self, visitor: &dyn Visitor) -> VisitorReturnResult {
         visitor.visit_binary_expr(&self)
     }
 }
@@ -105,7 +110,7 @@ pub(crate) struct Grouping {
 }
 
 impl Expr for Grouping {
-    fn accept(&self, visitor: &dyn Visitor) -> VisitorReturnType {
+    fn accept(&self, visitor: &dyn Visitor) -> VisitorReturnResult {
         visitor.visit_grouping_expr(&self)
     }
 }
@@ -121,7 +126,7 @@ pub(crate) struct LiteralExpr {
 }
 
 impl Expr for LiteralExpr {
-    fn accept(&self, visitor: &dyn Visitor) -> VisitorReturnType {
+    fn accept(&self, visitor: &dyn Visitor) -> VisitorReturnResult {
         visitor.visit_literalexpr_expr(&self)
     }
 }
@@ -138,7 +143,7 @@ pub(crate) struct Unary {
 }
 
 impl Expr for Unary {
-    fn accept(&self, visitor: &dyn Visitor) -> VisitorReturnType {
+    fn accept(&self, visitor: &dyn Visitor) -> VisitorReturnResult {
         visitor.visit_unary_expr(&self)
     }
 }

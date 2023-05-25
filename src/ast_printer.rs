@@ -1,7 +1,7 @@
 use std::borrow::Borrow;
 
 use crate::expr::Visitor;
-use crate::expr::VisitorReturnType::*;
+use crate::expr::VisitorReturnOk::*;
 use crate::expr::*;
 use crate::token::Literal::NoneLiteral;
 #[derive(Copy, Clone, Debug)]
@@ -10,7 +10,7 @@ pub(crate) struct AstPrinter {}
 impl AstPrinter {
     pub(crate) fn print(&self, expr: &dyn Expr) -> String {
         match expr.accept(self) {
-            VRString(s) => s,
+            Ok(VRString(s)) => s,
             _ => panic!(),
         }
     }
@@ -19,14 +19,14 @@ impl AstPrinter {
         let mut builder = String::new();
         builder.push('(');
         match lexpr.accept(self) {
-            VRString(s) => builder.push_str(&s),
+            Ok(VRString(s)) => builder.push_str(&s),
             _ => (),
         }
         builder.push(' ');
         builder.push_str(name);
         builder.push(' ');
         match rexpr.accept(self) {
-            VRString(s) => builder.push_str(&s),
+            Ok(VRString(s)) => builder.push_str(&s),
             _ => (),
         }
         builder.push(')');
@@ -38,7 +38,7 @@ impl AstPrinter {
         builder.push('(');
         builder.push_str(name);
         match expr.accept(self) {
-            VRString(s) => builder.push_str(&s),
+            Ok(VRString(s)) => builder.push_str(&s),
             _ => (),
         }
         builder.push(')');
@@ -47,23 +47,28 @@ impl AstPrinter {
 }
 
 impl Visitor for AstPrinter {
-    fn visit_binary_expr(&self, expr: &Binary) -> VisitorReturnType {
-        VisitorReturnType::VRString(self.parenthesize_two(
+    fn visit_binary_expr(&self, expr: &Binary) -> VisitorReturnResult {
+        Ok(VRString(self.parenthesize_two(
             &expr.operator.lexeme,
             expr.left.borrow(),
             expr.right.borrow(),
+        )))
+    }
+    fn visit_grouping_expr(&self, expr: &Grouping) -> VisitorReturnResult {
+        Ok(VRString(
+            self.parenthesize_one("group ", expr.expression.borrow()),
         ))
     }
-    fn visit_grouping_expr(&self, expr: &Grouping) -> VisitorReturnType {
-        VisitorReturnType::VRString(self.parenthesize_one("group ", expr.expression.borrow()))
-    }
-    fn visit_literalexpr_expr(&self, expr: &LiteralExpr) -> VisitorReturnType {
+    fn visit_literalexpr_expr(&self, expr: &LiteralExpr) -> VisitorReturnResult {
         match expr.value {
-            NoneLiteral => VisitorReturnType::VRString(String::from("nil")),
-            _ => VisitorReturnType::VRString(format!("{:?}", expr.value)),
+            NoneLiteral => Ok(VRString(String::from("nil"))),
+            _ => Ok(VRString(format!("{:?}", expr.value))),
         }
     }
-    fn visit_unary_expr(&self, expr: &Unary) -> VisitorReturnType {
-        VisitorReturnType::VRString(self.parenthesize_one(&expr.operator.lexeme, expr.right.borrow()))
+    fn visit_unary_expr(&self, expr: &Unary) -> VisitorReturnResult {
+        Ok(VRString(self.parenthesize_one(
+            &expr.operator.lexeme,
+            expr.right.borrow(),
+        )))
     }
 }

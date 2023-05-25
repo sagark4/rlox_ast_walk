@@ -1,4 +1,4 @@
-use interpreter::Interpreter;
+use interpreter::{Interpreter, RuntimeError};
 use parser::Parser;
 use scanner::Scanner;
 use std::borrow::Borrow;
@@ -101,5 +101,12 @@ pub(crate) fn error_with_token(token: &Token, message: &str) {
         location.push_str(&token.lexeme);
         location.push_str("'");
         report(token.line, &location, message);
+    }
+}
+
+pub(crate) fn runtime_error(error: &RuntimeError) {
+    eprintln!("[line {}] Error: {}", error.token.line, error.message);
+    unsafe {
+        HAD_ERROR = true;
     }
 }

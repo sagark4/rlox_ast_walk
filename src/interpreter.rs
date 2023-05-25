@@ -1,5 +1,6 @@
+use crate::expr::VisitorReturnType::Err;
 use crate::expr::{Binary, Expr, Grouping, LiteralExpr, Unary, Visitor, VisitorReturnType};
-use crate::token::Literal;
+use crate::token::{Literal, Token};
 use crate::token_type::TokenType::*;
 use std::borrow::Borrow;
 
@@ -12,9 +13,29 @@ impl Interpreter {
     pub(crate) fn evaluate_get_literal(&self, expr: &dyn Expr) -> Literal {
         match expr.accept(self) {
             VisitorReturnType::VRLiteral(vrl) => vrl,
+            Err(err) => {
+                crate::runtime_error(&err);
+                Literal::NoneLiteral
+            }
             _ => panic!(),
         }
     }
+}
+
+pub(crate) struct RuntimeError {
+    pub(crate) message: String,
+    pub(crate) token: Token,
+}
+
+fn construct_error(message: &str, token: &Token) -> VisitorReturnType {
+    Err(RuntimeError {
+        message: String::from(message),
+        token: token.clone(),
+    })
+}
+
+fn construct_number_error(token: &Token) -> VisitorReturnType {
+    construct_error("Operands must be numbers.", token)
 }
 
 impl Visitor for Interpreter {
@@ -28,8 +49,17 @@ impl Visitor for Interpreter {
 
     fn visit_unary_expr(&self, expr: &Unary) -> VisitorReturnType {
         let right = self.evaluate(expr.right.borrow());
+        if let Err(err) = right {
+            return Err(err);
+        }
         match expr.operator.token_type {
-            Minus => VisitorReturnType::wrap_float(-right.unwrap_float()),
+            Minus => {
+                if !right.is_float() {
+                    construct_number_error(&expr.operator)
+                } else {
+                    VisitorReturnType::wrap_float(-right.unwrap_float())
+                }
+            }
             Bang => right.unwrap_negate_and_wrap_vrl_bool(),
             _ => panic!(), //TODO:
         }
@@ -37,7 +67,13 @@ impl Visitor for Interpreter {
 
     fn visit_binary_expr(&self, expr: &Binary) -> VisitorReturnType {
         let left = self.evaluate(expr.left.borrow());
+        if let Err(err) = left {
+            return Err(err);
+        }
         let right = self.evaluate(expr.right.borrow());
+        if let Err(err) = right {
+            return Err(err);
+        }
         match expr.operator.token_type {
             BangEqual => return VisitorReturnType::wrap_bool(!left.is_vrl_equal_or_panic(&right)),
             EqualEqual => return VisitorReturnType::wrap_bool(left.is_vrl_equal_or_panic(&right)),

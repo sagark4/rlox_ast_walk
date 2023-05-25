@@ -19,6 +19,7 @@ mod token;
 mod token_type;
 
 static mut HAD_ERROR: bool = false;
+static mut HAD_RUNTIME_ERROR: bool = false;
 fn main() {
     let args: Vec<_> = env::args().collect();
     if args.len() > 2 {
@@ -45,6 +46,9 @@ fn run_file(file_name: &str) {
         if HAD_ERROR {
             std::process::exit(65);
         }
+        if HAD_RUNTIME_ERROR {
+            std::process::exit(70);
+        }
     }
 }
 
@@ -55,11 +59,14 @@ fn run(source: &str) {
     //     println!("{:?}", t);
     // }
     let mut parser = Parser::from(scanner.tokens);
-    let ast_printer = AstPrinter {};
     match parser.parse() {
         Ok(expr) => {
-            println!("{}", ast_printer.print(expr.borrow()));
-            println!("{:?}", Interpreter {}.evaluate_get_literal(expr.borrow()));
+            // let ast_printer = AstPrinter {};
+            // println!("{}", ast_printer.print(expr.borrow()));
+            match (Interpreter {}).interpret(expr.borrow()) {
+                Err(_) => println!("Runtime error."),
+                _ => (),
+            }
         }
         Err(_) => println!("Parse error."),
     }
@@ -107,6 +114,6 @@ pub(crate) fn error_with_token(token: &Token, message: &str) {
 pub(crate) fn runtime_error(error: &RuntimeError) {
     eprintln!("[line {}] Error: {}", error.token.line, error.message);
     unsafe {
-        HAD_ERROR = true;
+        HAD_RUNTIME_ERROR = true;
     }
 }

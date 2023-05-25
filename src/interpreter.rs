@@ -1,4 +1,4 @@
-use crate::expr::VisitorReturnType::Err;
+use crate::expr::VisitorReturnType::VRErr;
 use crate::expr::{Binary, Expr, Grouping, LiteralExpr, Unary, Visitor, VisitorReturnType};
 use crate::token::{Literal, Token};
 use crate::token_type::TokenType::*;
@@ -10,14 +10,31 @@ impl Interpreter {
     fn evaluate(&self, expr: &dyn Expr) -> VisitorReturnType {
         expr.accept(self)
     }
-    pub(crate) fn evaluate_get_literal(&self, expr: &dyn Expr) -> Literal {
+    pub(crate) fn interpret(&self, expr: &dyn Expr) -> Result<(), RuntimeError> {
         match expr.accept(self) {
-            VisitorReturnType::VRLiteral(vrl) => vrl,
-            Err(err) => {
+            VisitorReturnType::VRLiteral(literal) => {
+                println!("{}", self.stringify(&literal));
+                Ok(())
+            },
+            VRErr(err) => {
                 crate::runtime_error(&err);
-                Literal::NoneLiteral
-            }
+                Err(err)
+            },
             _ => panic!(),
+        }
+    }
+    fn stringify(&self, literal: &Literal) -> String{
+        match literal {
+            Literal::NoneLiteral  => String::from("nil"),
+            Literal::BoolLiteral(b) => format!("{}", b),
+            Literal::Float(f) => {
+                if f.fract() == 0.0 {
+                    format!("{}", *f as i32)
+                } else {
+                    format!("{}", f)
+                }
+            },
+            Literal::StringLiteral(s) => s.clone()
         }
     }
 }
@@ -28,7 +45,7 @@ pub(crate) struct RuntimeError {
 }
 
 fn construct_error(message: &str, token: &Token) -> VisitorReturnType {
-    Err(RuntimeError {
+    VRErr(RuntimeError {
         message: String::from(message),
         token: token.clone(),
     })
@@ -49,8 +66,8 @@ impl Visitor for Interpreter {
 
     fn visit_unary_expr(&self, expr: &Unary) -> VisitorReturnType {
         let right = self.evaluate(expr.right.borrow());
-        if let Err(err) = right {
-            return Err(err);
+        if let VRErr(err) = right {
+            return VRErr(err);
         }
         match expr.operator.token_type {
             Minus => {
@@ -67,12 +84,12 @@ impl Visitor for Interpreter {
 
     fn visit_binary_expr(&self, expr: &Binary) -> VisitorReturnType {
         let left = self.evaluate(expr.left.borrow());
-        if let Err(err) = left {
-            return Err(err);
+        if let VRErr(err) = left {
+            return VRErr(err);
         }
         let right = self.evaluate(expr.right.borrow());
-        if let Err(err) = right {
-            return Err(err);
+        if let VRErr(err) = right {
+            return VRErr(err);
         }
         match expr.operator.token_type {
             BangEqual => return VisitorReturnType::wrap_bool(!left.is_vrl_equal_or_panic(&right)),
@@ -84,9 +101,12 @@ impl Visitor for Interpreter {
             concat_string.push_str(right.unwrap_str_literal());
             return VisitorReturnType::wrap_string_literal(concat_string);
         }
+        if !right.is_float() || !left.is_float() {
+            return construct_number_error(&expr.operator);
+        }
 
-        let left = self.evaluate(expr.left.borrow()).unwrap_float();
-        let right = self.evaluate(expr.right.borrow()).unwrap_float();
+        let left = left.unwrap_float();
+        let right = right.unwrap_float();
         match expr.operator.token_type {
             Minus => VisitorReturnType::wrap_float(left - right),
             Plus => VisitorReturnType::wrap_float(left + right),

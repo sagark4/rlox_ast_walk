@@ -1,8 +1,7 @@
 use crate::error_with_token;
-use crate::expr::{Binary, Grouping, LiteralExpr, Unary};
-use crate::token::Literal::*;
+use crate::expr::{Binary, Expr, Grouping, LiteralExpr, Unary};
+use crate::token::{Literal::*, Token};
 use crate::token_type::TokenType::{self, *};
-use crate::{expr::Expr, token::Token};
 
 pub(crate) struct Parser {
     tokens: Vec<Token>,

@@ -1,6 +1,9 @@
-use crate::expr::{Binary, Expr, Grouping, LiteralExpr, Unary};
-use crate::stmt::Stmt;
-use crate::token::{Literal::*, Token};
+use crate::expr::{Binary, Expr, Grouping, LiteralExpr, Unary, Variable};
+use crate::stmt::{Stmt, VarStmt};
+use crate::token::{
+    Literal::{self, *},
+    Token,
+};
 use crate::token_type::TokenType::{self, *};
 use crate::{error_with_token, stmt};
 
@@ -21,13 +24,25 @@ impl Parser {
     pub(crate) fn parse(&mut self) -> ParseResult {
         let mut statements = Vec::new();
         while !self.is_at_end() {
-            statements.push(self.statement()?);
+            statements.push(self.declaration()?);
         }
         Ok(statements)
     }
 
     fn expression(&mut self) -> ExprResult {
         self.equality()
+    }
+
+    fn declaration(&mut self) -> StmtResult {
+        if self.match_next_token_type(vec![Var]) {
+            return self.var_declaration();
+        }
+        let stmt_result = self.statement();
+        match stmt_result {
+            Err(_) => self.synchronize(),
+            _ => (),
+        }
+        stmt_result
     }
 
     fn statement(&mut self) -> StmtResult {
@@ -42,6 +57,16 @@ impl Parser {
         let value = self.expression()?;
         self.consume(Semicolon, "Expect ';' after value.")?;
         Ok(stmt::PrintStmt::new(value))
+    }
+
+    fn var_declaration(&mut self) -> StmtResult {
+        let name = self.consume(IdentifierLiteralToken, "Expect variable name.")?;
+        let mut initializer: Box<dyn Expr> = LiteralExpr::new(Literal::NoneLiteral);
+        if self.match_next_token_type(vec![Equal]) {
+            initializer = self.expression()?;
+        }
+        self.consume(Semicolon, "Expect ';' after declaration.")?;
+        Ok(VarStmt::new(name, initializer))
     }
 
     fn expression_statement(&mut self) -> StmtResult {
@@ -139,6 +164,9 @@ impl Parser {
         if self.match_next_token_type(vec![NumberLiteralToken, StringLiteralToken]) {
             return Ok(LiteralExpr::new(self.previous().literal));
         }
+        if self.match_next_token_type(vec![IdentifierLiteralToken]) {
+            return Ok(Variable::new(self.previous()));
+        }
         if self.match_next_token_type(vec![LeftParen]) {
             let expr = self.expression()?;
             self.consume(RightParen, "Expect ')' after expression.")?;
@@ -158,5 +186,20 @@ impl Parser {
     fn error(&mut self, token: &Token, message: &str) -> ParseError {
         error_with_token(token, message);
         ParseError {}
+    }
+
+    fn synchronize(&mut self) {
+        self.advance();
+
+        while !self.is_at_end() {
+            if self.previous().token_type == Semicolon {
+                return;
+            }
+
+            match self.peek().token_type {
+                Class | Fun | Var | For | If | While | Print | Return => return,
+                _ => _ = self.advance(),
+            }
+        }
     }
 }

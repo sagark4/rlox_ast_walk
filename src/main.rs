@@ -7,7 +7,8 @@ use std::io::{Read, Write};
 use token::Token;
 
 use crate::token_type::TokenType;
-mod ast_printer;
+//mod ast_printer;
+mod environment;
 mod expr;
 mod interpreter;
 mod parser;
@@ -39,7 +40,9 @@ fn run_file(file_name: &str) {
     let mut file_contents = String::new();
     file.read_to_string(&mut file_contents)
         .expect(&format!("Error reading the file: {file_name}."));
-    run(&file_contents);
+
+    let mut interpreter = Interpreter::new();
+    run(&file_contents, &mut interpreter);
     unsafe {
         if HAD_ERROR {
             std::process::exit(65);
@@ -50,7 +53,7 @@ fn run_file(file_name: &str) {
     }
 }
 
-fn run(source: &str) {
+fn run(source: &str, interpreter: &mut Interpreter) {
     let mut scanner = Scanner::new(source);
     scanner.scan_tokens();
     // for t in scanner.tokens.iter() {
@@ -61,7 +64,7 @@ fn run(source: &str) {
         Ok(statements) => {
             // let ast_printer = AstPrinter {};
             // println!("{}", ast_printer.print(expr.borrow()));
-            match (Interpreter {}).interpret(statements) {
+            match interpreter.interpret(statements) {
                 Err(_) => println!("Runtime error."),
                 _ => (),
             }
@@ -72,13 +75,14 @@ fn run(source: &str) {
 
 fn run_prompt() {
     let stdin = std::io::stdin();
+    let mut interpreter = Interpreter::new();
     loop {
         print!("> ");
         _ = std::io::stdout().flush().unwrap();
         let mut buffer = String::new();
         match stdin.read_line(&mut buffer) {
             Ok(0) => break,
-            Ok(_) => _ = run(&buffer),
+            Ok(_) => _ = run(&buffer, &mut interpreter),
             Err(error) => println!("error: {error}"),
         }
         unsafe {

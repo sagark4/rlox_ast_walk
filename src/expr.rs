@@ -82,6 +82,7 @@ pub(crate) trait Visitor {
     fn visit_grouping_expr(&self, expr: &Grouping) -> VisitorReturnResult;
     fn visit_literalexpr_expr(&self, expr: &LiteralExpr) -> VisitorReturnResult;
     fn visit_unary_expr(&self, expr: &Unary) -> VisitorReturnResult;
+    fn visit_variable_expr(&self, expr: &Variable) -> VisitorReturnResult;
 }
 
 pub(crate) struct Binary {
@@ -152,5 +153,21 @@ impl Expr for Unary {
 impl Unary {
     pub(crate) fn new(operator: Token, right: Box<dyn Expr>) -> Box<Self> {
         Box::new(Self { operator, right })
+    }
+}
+
+pub(crate) struct Variable {
+    pub(crate) name: Token,
+}
+
+impl Expr for Variable {
+    fn accept(&self, visitor: &dyn Visitor) -> VisitorReturnResult {
+        visitor.visit_variable_expr(&self)
+    }
+}
+
+impl Variable {
+    pub(crate) fn new(name: Token) -> Box<Self> {
+        Box::new(Self { name })
     }
 }

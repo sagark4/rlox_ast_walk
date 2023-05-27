@@ -1,23 +1,29 @@
-use crate::expr::{self, VisitorReturnOk};
+use crate::environment::Environment;
+use crate::expr::{self, Variable, VisitorReturnError, VisitorReturnOk};
 use crate::expr::{
     Binary, Expr, Grouping, LiteralExpr, Unary, VisitorReturnError::VRRuntimeErr,
-    VisitorReturnOk::NoResult, VisitorReturnOk::VRLiteral, VisitorReturnOk::VRString,
-    VisitorReturnResult,
+    VisitorReturnOk::NoResult, VisitorReturnOk::VRLiteral, VisitorReturnResult,
 };
 use crate::runtime_error;
-use crate::stmt::{self, ExpressionStmt, PrintStmt, Stmt};
+use crate::stmt::{self, ExpressionStmt, PrintStmt, Stmt, VarStmt};
 use crate::token::{Literal, Token};
 use crate::token_type::TokenType::*;
 use std::borrow::Borrow;
 
-#[derive(Copy, Clone, Debug)]
-pub(crate) struct Interpreter {}
+pub(crate) struct Interpreter {
+    environment: Environment,
+}
 impl Interpreter {
+    pub(crate) fn new() -> Self {
+        Self {
+            environment: Environment::new(),
+        }
+    }
     fn evaluate(&self, expr: &dyn Expr) -> VisitorReturnResult {
         expr.accept(self)
     }
 
-    fn execute(&self, stmt: &dyn Stmt) -> VisitorReturnResult {
+    fn execute(&mut self, stmt: &dyn Stmt) -> VisitorReturnResult {
         stmt.accept(self)
     }
 
@@ -34,7 +40,7 @@ impl Interpreter {
     //         _ => panic!(),
     //     }
     // }
-    pub(crate) fn interpret(&self, statements: Vec<Box<dyn Stmt>>) -> Result<(), RuntimeError> {
+    pub(crate) fn interpret(&mut self, statements: Vec<Box<dyn Stmt>>) -> Result<(), RuntimeError> {
         for statement in statements {
             if let Err(VRRuntimeErr(err)) = self.execute(statement.borrow()) {
                 runtime_error(&err);
@@ -138,6 +144,13 @@ impl expr::Visitor for Interpreter {
             _ => panic!(), //TODO:
         }
     }
+
+    fn visit_variable_expr(&self, expr: &Variable) -> VisitorReturnResult {
+        match self.environment.get(&expr.name) {
+            Ok(literal) => Ok(VRLiteral(literal.clone())),
+            Err(runtime_error) => Err(VisitorReturnError::VRRuntimeErr(runtime_error)),
+        }
+    }
 }
 
 impl stmt::Visitor for Interpreter {
@@ -154,5 +167,17 @@ impl stmt::Visitor for Interpreter {
             }
             _ => panic!(), // Should not reach here.
         }
+    }
+
+    fn visit_var_stmt(&mut self, expr: &VarStmt) -> VisitorReturnResult {
+        let eval_result = self.evaluate(expr.initializer.borrow())?;
+        match eval_result {
+            VRLiteral(literal) => {
+                self.environment.define(expr.name.lexeme.clone(), literal);
+            }
+            _ => (),
+        }
+
+        Ok(VisitorReturnOk::NoResult)
     }
 }

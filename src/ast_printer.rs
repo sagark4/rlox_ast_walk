@@ -1,6 +1,6 @@
 use std::borrow::Borrow;
 
-use crate::expr;
+use crate::expr::{self, Variable};
 use crate::expr::{Binary, Expr, Grouping, LiteralExpr, Unary};
 use crate::token::Literal::NoneLiteral;
 #[derive(Copy, Clone, Debug)]
@@ -43,6 +43,8 @@ impl AstPrinter {
         builder.push(')');
         builder
     }
+
+    
 }
 
 impl expr::Visitor for AstPrinter {
@@ -65,6 +67,12 @@ impl expr::Visitor for AstPrinter {
         }
     }
     fn visit_unary_expr(&self, expr: &Unary) -> expr::VisitorReturnResult {
+        Ok(expr::VisitorReturnOk::VRString(self.parenthesize_one(
+            &expr.operator.lexeme,
+            expr.right.borrow(),
+        )))
+    }
+    fn visit_variable_expr(&self, expr: &Variable) -> expr::VisitorReturnResult {
         Ok(expr::VisitorReturnOk::VRString(self.parenthesize_one(
             &expr.operator.lexeme,
             expr.right.borrow(),

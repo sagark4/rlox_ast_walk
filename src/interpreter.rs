@@ -1,5 +1,5 @@
 use crate::environment::Environment;
-use crate::expr::{Binary, Expr, Grouping, LiteralExpr, Unary, Variable, self};
+use crate::expr::{self, Binary, Expr, Grouping, LiteralExpr, Unary, Variable};
 use crate::stmt::{Expression, Print, Stmt, Var};
 use crate::token::{Literal, Token};
 use crate::token_type::TokenType::*;
@@ -39,7 +39,7 @@ impl Interpreter {
     //         _ => panic!(),
     //     }
     // }
-    pub(crate) fn interpret(&mut self, statements: Vec<Box<Stmt>>) -> Result<(), RuntimeError> {
+    pub(crate) fn interpret(&mut self, statements: Vec<Stmt>) -> Result<(), RuntimeError> {
         for statement in statements {
             if let Err(err) = self.execute(statement.borrow()) {
                 runtime_error(&err);
@@ -137,10 +137,7 @@ impl expr::Visitor<ExprVisitorResult> for Interpreter {
     }
 
     fn visit_variable_expr(&self, expr: &Variable) -> ExprVisitorResult {
-        match self.environment.get(&expr.name) {
-            Ok(literal) => Ok(literal.clone()),
-            Err(runtime_error) => Err(runtime_error),
-        }
+        self.environment.get(&expr.name)
     }
 }
 

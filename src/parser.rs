@@ -15,9 +15,9 @@ pub(crate) struct Parser {
 }
 
 pub(crate) struct ParseError;
-type ExprResult = Result<Box<Expr>, ParseError>;
-type StmtResult = Result<Box<Stmt>, ParseError>;
-type ParseResult = Result<Vec<Box<Stmt>>, ParseError>;
+type ExprResult = Result<Expr, ParseError>;
+type StmtResult = Result<Stmt, ParseError>;
+type ParseResult = Result<Vec<Stmt>, ParseError>;
 impl Parser {
     pub(crate) fn from(tokens: Vec<Token>) -> Self {
         Self { tokens, current: 0 }
@@ -58,24 +58,23 @@ impl Parser {
     fn print_statement(&mut self) -> StmtResult {
         let value = self.expression()?;
         self.consume(Semicolon, "Expect ';' after value.")?;
-        Ok(Box::new(PrintStmt(Print::new(value))))
+        Ok(PrintStmt(Print::new(value)))
     }
 
     fn var_declaration(&mut self) -> StmtResult {
         let name = self.consume(IdentifierLiteralToken, "Expect variable name.")?;
-        let mut initializer: Box<Expr> =
-            Box::new(LiteralExprExpr(LiteralExpr::new(Literal::NoneLiteral)));
+        let mut initializer: Expr = LiteralExprExpr(LiteralExpr::new(Literal::NoneLiteral));
         if self.match_next_token_type(vec![Equal]) {
             initializer = self.expression()?;
         }
         self.consume(Semicolon, "Expect ';' after declaration.")?;
-        Ok(Box::new(VarStmt(Var::new(name, initializer))))
+        Ok(VarStmt(Var::new(name, initializer)))
     }
 
     fn expression_statement(&mut self) -> StmtResult {
         let expr = self.expression()?;
         self.consume(Semicolon, "Expect ';' after expression.")?;
-        Ok(Box::new(ExpressionStmt(Expression::new(expr))))
+        Ok(ExpressionStmt(Expression::new(expr)))
     }
 
     fn equality(&mut self) -> ExprResult {
@@ -83,7 +82,7 @@ impl Parser {
         while self.match_next_token_type(vec![BangEqual, EqualEqual]) {
             let operator = self.previous();
             let right = self.comparison()?;
-            expr = Box::new(BinaryExpr(Binary::new(expr, operator.clone(), right)));
+            expr = BinaryExpr(Binary::new(expr, operator.clone(), right));
         }
         Ok(expr)
     }
@@ -123,7 +122,7 @@ impl Parser {
         while self.match_next_token_type(vec![Greater, GreaterEqual, Less, LessEqual]) {
             let operator = self.previous();
             let right = self.term()?;
-            expr = Box::new(BinaryExpr(Binary::new(expr, operator.clone(), right)));
+            expr = BinaryExpr(Binary::new(expr, operator.clone(), right));
         }
         Ok(expr)
     }
@@ -132,7 +131,7 @@ impl Parser {
         while self.match_next_token_type(vec![Minus, Plus]) {
             let operator = self.previous();
             let right = self.factor()?;
-            expr = Box::new(BinaryExpr(Binary::new(expr, operator.clone(), right)));
+            expr = BinaryExpr(Binary::new(expr, operator.clone(), right));
         }
         Ok(expr)
     }
@@ -141,7 +140,7 @@ impl Parser {
         while self.match_next_token_type(vec![Slash, Star]) {
             let operator = self.previous();
             let right = self.unary()?;
-            expr = Box::new(BinaryExpr(Binary::new(expr, operator.clone(), right)));
+            expr = BinaryExpr(Binary::new(expr, operator.clone(), right));
         }
         Ok(expr)
     }
@@ -149,37 +148,31 @@ impl Parser {
         if self.match_next_token_type(vec![Bang, Minus]) {
             let operator = self.previous();
             let right = self.unary()?;
-            Ok(Box::new(UnaryExpr(Unary::new(operator.clone(), right))))
+            Ok(UnaryExpr(Unary::new(operator.clone(), right)))
         } else {
             self.primary()
         }
     }
     fn primary(&mut self) -> ExprResult {
         if self.match_next_token_type(vec![False]) {
-            return Ok(Box::new(LiteralExprExpr(LiteralExpr::new(BoolLiteral(
-                false,
-            )))));
+            return Ok(LiteralExprExpr(LiteralExpr::new(BoolLiteral(false))));
         }
         if self.match_next_token_type(vec![True]) {
-            return Ok(Box::new(LiteralExprExpr(LiteralExpr::new(BoolLiteral(
-                true,
-            )))));
+            return Ok(LiteralExprExpr(LiteralExpr::new(BoolLiteral(true))));
         }
         if self.match_next_token_type(vec![NilTokenType]) {
-            return Ok(Box::new(LiteralExprExpr(LiteralExpr::new(NoneLiteral))));
+            return Ok(LiteralExprExpr(LiteralExpr::new(NoneLiteral)));
         }
         if self.match_next_token_type(vec![NumberLiteralToken, StringLiteralToken]) {
-            return Ok(Box::new(LiteralExprExpr(LiteralExpr::new(
-                self.previous().literal,
-            ))));
+            return Ok(LiteralExprExpr(LiteralExpr::new(self.previous().literal)));
         }
         if self.match_next_token_type(vec![IdentifierLiteralToken]) {
-            return Ok(Box::new(VariableExpr(Variable::new(self.previous()))));
+            return Ok(VariableExpr(Variable::new(self.previous())));
         }
         if self.match_next_token_type(vec![LeftParen]) {
             let expr = self.expression()?;
             self.consume(RightParen, "Expect ')' after expression.")?;
-            return Ok(Box::new(GroupingExpr(Grouping::new(expr))));
+            return Ok(GroupingExpr(Grouping::new(expr)));
         }
         Err(ParseError {})
     }

@@ -29,13 +29,13 @@ pub(crate) trait Visitor<R> {
 }
 
 pub(crate) struct Binary {
-    pub(crate) left: Box<Expr>,
+    pub(crate) left: Expr,
     pub(crate) operator: Token,
-    pub(crate) right: Box<Expr>,
+    pub(crate) right: Expr,
 }
 
 impl Binary {
-    pub(crate) fn new(left: Box<Expr>, operator: Token, right: Box<Expr>) -> Box<Self> {
+    pub(crate) fn new(left: Expr, operator: Token, right: Expr) -> Box<Self> {
         Box::new(Self {
             left,
             operator,
@@ -45,11 +45,11 @@ impl Binary {
 }
 
 pub(crate) struct Grouping {
-    pub(crate) expression: Box<Expr>,
+    pub(crate) expression: Expr,
 }
 
 impl Grouping {
-    pub(crate) fn new(expression: Box<Expr>) -> Box<Self> {
+    pub(crate) fn new(expression: Expr) -> Box<Self> {
         Box::new(Self { expression })
     }
 }
@@ -66,11 +66,11 @@ impl LiteralExpr {
 
 pub(crate) struct Unary {
     pub(crate) operator: Token,
-    pub(crate) right: Box<Expr>,
+    pub(crate) right: Expr,
 }
 
 impl Unary {
-    pub(crate) fn new(operator: Token, right: Box<Expr>) -> Box<Self> {
+    pub(crate) fn new(operator: Token, right: Expr) -> Box<Self> {
         Box::new(Self { operator, right })
     }
 }

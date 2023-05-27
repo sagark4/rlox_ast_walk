@@ -22,32 +22,32 @@ pub(crate) trait Visitor<R> {
 }
 
 pub(crate) struct Expression {
-    pub(crate) expression: Box<Expr>,
+    pub(crate) expression: Expr,
 }
 
 impl Expression {
-    pub(crate) fn new(expression: Box<Expr>) -> Box<Self> {
+    pub(crate) fn new(expression: Expr) -> Box<Self> {
         Box::new(Self { expression })
     }
 }
 
 pub(crate) struct Print {
-    pub(crate) expression: Box<Expr>,
+    pub(crate) expression: Expr,
 }
 
 impl Print {
-    pub(crate) fn new(expression: Box<Expr>) -> Box<Self> {
+    pub(crate) fn new(expression: Expr) -> Box<Self> {
         Box::new(Self { expression })
     }
 }
 
 pub(crate) struct Var {
     pub(crate) name: Token,
-    pub(crate) initializer: Box<Expr>,
+    pub(crate) initializer: Expr,
 }
 
 impl Var {
-    pub(crate) fn new(token: Token, initializer: Box<Expr>) -> Box<Self> {
+    pub(crate) fn new(token: Token, initializer: Expr) -> Box<Self> {
         Box::new(Self { name: token, initializer })
     }
 }

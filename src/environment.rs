@@ -17,9 +17,9 @@ impl Environment {
     pub(crate) fn define(&mut self, name: String, value: Literal) {
         self.values.insert(name, value);
     }
-    pub(crate) fn get<'a> (&'a self, name: &Token) -> Result<&'a Literal, RuntimeError> {
+    pub(crate) fn get(&self, name: &Token) -> Result<Literal, RuntimeError> {
         match self.values.get(&name.lexeme) {
-            Some(literal) => Ok(literal),
+            Some(literal) => Ok(literal.clone()),
             None => {
                 let mut message = String::from("Undefined variable '");
                 message.push_str(&name.lexeme);

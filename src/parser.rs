@@ -1,21 +1,23 @@
+use crate::error_with_token;
+use crate::expr::Expr::{BinaryExpr, GroupingExpr, LiteralExprExpr, UnaryExpr, VariableExpr};
 use crate::expr::{Binary, Expr, Grouping, LiteralExpr, Unary, Variable};
-use crate::stmt::{Stmt, VarStmt};
+use crate::stmt::Stmt::{ExpressionStmt, PrintStmt, VarStmt};
+use crate::stmt::{Expression, Print, Stmt, Var};
 use crate::token::{
     Literal::{self, *},
     Token,
 };
 use crate::token_type::TokenType::{self, *};
-use crate::{error_with_token, stmt};
 
 pub(crate) struct Parser {
     tokens: Vec<Token>,
     current: usize,
 }
 
-pub(crate) struct ParseError {}
-type ExprResult = Result<Box<dyn Expr>, ParseError>;
-type StmtResult = Result<Box<dyn Stmt>, ParseError>;
-type ParseResult = Result<Vec<Box<dyn Stmt>>, ParseError>;
+pub(crate) struct ParseError;
+type ExprResult = Result<Box<Expr>, ParseError>;
+type StmtResult = Result<Box<Stmt>, ParseError>;
+type ParseResult = Result<Vec<Box<Stmt>>, ParseError>;
 impl Parser {
     pub(crate) fn from(tokens: Vec<Token>) -> Self {
         Self { tokens, current: 0 }
@@ -56,23 +58,24 @@ impl Parser {
     fn print_statement(&mut self) -> StmtResult {
         let value = self.expression()?;
         self.consume(Semicolon, "Expect ';' after value.")?;
-        Ok(stmt::PrintStmt::new(value))
+        Ok(Box::new(PrintStmt(Print::new(value))))
     }
 
     fn var_declaration(&mut self) -> StmtResult {
         let name = self.consume(IdentifierLiteralToken, "Expect variable name.")?;
-        let mut initializer: Box<dyn Expr> = LiteralExpr::new(Literal::NoneLiteral);
+        let mut initializer: Box<Expr> =
+            Box::new(LiteralExprExpr(LiteralExpr::new(Literal::NoneLiteral)));
         if self.match_next_token_type(vec![Equal]) {
             initializer = self.expression()?;
         }
         self.consume(Semicolon, "Expect ';' after declaration.")?;
-        Ok(VarStmt::new(name, initializer))
+        Ok(Box::new(VarStmt(Var::new(name, initializer))))
     }
 
     fn expression_statement(&mut self) -> StmtResult {
         let expr = self.expression()?;
         self.consume(Semicolon, "Expect ';' after expression.")?;
-        Ok(stmt::ExpressionStmt::new(expr))
+        Ok(Box::new(ExpressionStmt(Expression::new(expr))))
     }
 
     fn equality(&mut self) -> ExprResult {
@@ -80,7 +83,7 @@ impl Parser {
         while self.match_next_token_type(vec![BangEqual, EqualEqual]) {
             let operator = self.previous();
             let right = self.comparison()?;
-            expr = Binary::new(expr, operator.clone(), right);
+            expr = Box::new(BinaryExpr(Binary::new(expr, operator.clone(), right)));
         }
         Ok(expr)
     }
@@ -120,7 +123,7 @@ impl Parser {
         while self.match_next_token_type(vec![Greater, GreaterEqual, Less, LessEqual]) {
             let operator = self.previous();
             let right = self.term()?;
-            expr = Binary::new(expr, operator.clone(), right);
+            expr = Box::new(BinaryExpr(Binary::new(expr, operator.clone(), right)));
         }
         Ok(expr)
     }
@@ -129,7 +132,7 @@ impl Parser {
         while self.match_next_token_type(vec![Minus, Plus]) {
             let operator = self.previous();
             let right = self.factor()?;
-            expr = Binary::new(expr, operator.clone(), right);
+            expr = Box::new(BinaryExpr(Binary::new(expr, operator.clone(), right)));
         }
         Ok(expr)
     }
@@ -138,7 +141,7 @@ impl Parser {
         while self.match_next_token_type(vec![Slash, Star]) {
             let operator = self.previous();
             let right = self.unary()?;
-            expr = Binary::new(expr, operator.clone(), right);
+            expr = Box::new(BinaryExpr(Binary::new(expr, operator.clone(), right)));
         }
         Ok(expr)
     }
@@ -146,31 +149,37 @@ impl Parser {
         if self.match_next_token_type(vec![Bang, Minus]) {
             let operator = self.previous();
             let right = self.unary()?;
-            Ok(Unary::new(operator.clone(), right))
+            Ok(Box::new(UnaryExpr(Unary::new(operator.clone(), right))))
         } else {
             self.primary()
         }
     }
     fn primary(&mut self) -> ExprResult {
         if self.match_next_token_type(vec![False]) {
-            return Ok(LiteralExpr::new(BoolLiteral(false)));
+            return Ok(Box::new(LiteralExprExpr(LiteralExpr::new(BoolLiteral(
+                false,
+            )))));
         }
         if self.match_next_token_type(vec![True]) {
-            return Ok(LiteralExpr::new(BoolLiteral(true)));
+            return Ok(Box::new(LiteralExprExpr(LiteralExpr::new(BoolLiteral(
+                true,
+            )))));
         }
         if self.match_next_token_type(vec![NilTokenType]) {
-            return Ok(LiteralExpr::new(NoneLiteral));
+            return Ok(Box::new(LiteralExprExpr(LiteralExpr::new(NoneLiteral))));
         }
         if self.match_next_token_type(vec![NumberLiteralToken, StringLiteralToken]) {
-            return Ok(LiteralExpr::new(self.previous().literal));
+            return Ok(Box::new(LiteralExprExpr(LiteralExpr::new(
+                self.previous().literal,
+            ))));
         }
         if self.match_next_token_type(vec![IdentifierLiteralToken]) {
-            return Ok(Variable::new(self.previous()));
+            return Ok(Box::new(VariableExpr(Variable::new(self.previous()))));
         }
         if self.match_next_token_type(vec![LeftParen]) {
             let expr = self.expression()?;
             self.consume(RightParen, "Expect ')' after expression.")?;
-            return Ok(Grouping::new(expr));
+            return Ok(Box::new(GroupingExpr(Grouping::new(expr))));
         }
         Err(ParseError {})
     }

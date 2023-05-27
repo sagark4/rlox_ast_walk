@@ -1,68 +1,53 @@
-use crate::{
-    expr::{Expr, LiteralExpr, VisitorReturnResult},
-    token::{Literal, Token},
-};
-pub(crate) trait Stmt {
-    fn accept(&self, visitor: &mut dyn Visitor) -> VisitorReturnResult;
+use crate::{expr::Expr, token::Token};
+
+pub(crate) enum Stmt {
+    ExpressionStmt(Box<Expression>),
+    PrintStmt(Box<Print>),
+    VarStmt(Box<Var>),
 }
 
-pub(crate) trait Visitor {
-    fn visit_expression_stmt(&self, expr: &ExpressionStmt) -> VisitorReturnResult;
-    fn visit_print_stmt(&self, expr: &PrintStmt) -> VisitorReturnResult;
-    fn visit_var_stmt(&mut self, expr: &VarStmt) -> VisitorReturnResult;
-}
-
-pub(crate) struct ExpressionStmt {
-    pub(crate) expression: Box<dyn Expr>,
-}
-
-impl Stmt for ExpressionStmt {
-    fn accept(&self, visitor: &mut dyn Visitor) -> VisitorReturnResult {
-        visitor.visit_expression_stmt(&self)
+impl Stmt {
+    pub(crate) fn accept<R>(&self, visitor: &mut dyn Visitor<R>) -> R {
+        match self {
+            Stmt::ExpressionStmt(stmt) => visitor.visit_expression_stmt(stmt),
+            Stmt::PrintStmt(stmt) => visitor.visit_print_stmt(stmt),
+            Stmt::VarStmt(stmt) => visitor.visit_var_stmt(stmt),
+        }
     }
 }
+pub(crate) trait Visitor<R> {
+    fn visit_expression_stmt(&self, stmt: &Expression) -> R;
+    fn visit_print_stmt(&self, stmt: &Print) -> R;
+    fn visit_var_stmt(&mut self, stmt: &Var) -> R;
+}
 
-impl ExpressionStmt {
-    pub(crate) fn new(expression: Box<dyn Expr>) -> Box<Self> {
+pub(crate) struct Expression {
+    pub(crate) expression: Box<Expr>,
+}
+
+impl Expression {
+    pub(crate) fn new(expression: Box<Expr>) -> Box<Self> {
         Box::new(Self { expression })
     }
 }
 
-pub(crate) struct PrintStmt {
-    pub(crate) expression: Box<dyn Expr>,
+pub(crate) struct Print {
+    pub(crate) expression: Box<Expr>,
 }
 
-impl Stmt for PrintStmt {
-    fn accept(&self, visitor: &mut dyn Visitor) -> VisitorReturnResult {
-        visitor.visit_print_stmt(&self)
-    }
-}
-
-impl PrintStmt {
-    pub(crate) fn new(expression: Box<dyn Expr>) -> Box<Self> {
+impl Print {
+    pub(crate) fn new(expression: Box<Expr>) -> Box<Self> {
         Box::new(Self { expression })
     }
 }
 
-pub(crate) struct VarStmt {
+pub(crate) struct Var {
     pub(crate) name: Token,
-    pub(crate) initializer: Box<dyn Expr>,
+    pub(crate) initializer: Box<Expr>,
 }
 
-impl Stmt for VarStmt {
-    fn accept(&self, visitor: &mut dyn Visitor) -> VisitorReturnResult {
-        visitor.visit_var_stmt(&self)
-    }
-}
-
-impl VarStmt {
-    pub(crate) fn new(token: Token, initializer: Box<dyn Expr>) -> Box<Self> {
+impl Var {
+    pub(crate) fn new(token: Token, initializer: Box<Expr>) -> Box<Self> {
         Box::new(Self { name: token, initializer })
-    }
-    pub(crate) fn new_nil_initialized(token: Token) -> Box<Self> {
-        Box::new(Self {
-            name: token,
-            initializer: LiteralExpr::new(Literal::NoneLiteral),
-        })
     }
 }

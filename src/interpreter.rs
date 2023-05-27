@@ -1,14 +1,13 @@
 use crate::environment::Environment;
-use crate::expr::{self, Variable, VisitorReturnError, VisitorReturnOk};
-use crate::expr::{
-    Binary, Expr, Grouping, LiteralExpr, Unary, VisitorReturnError::VRRuntimeErr,
-    VisitorReturnOk::NoResult, VisitorReturnOk::VRLiteral, VisitorReturnResult,
-};
-use crate::runtime_error;
-use crate::stmt::{self, ExpressionStmt, PrintStmt, Stmt, VarStmt};
+use crate::expr::{Binary, Expr, Grouping, LiteralExpr, Unary, Variable, self};
+use crate::stmt::{Expression, Print, Stmt, Var};
 use crate::token::{Literal, Token};
 use crate::token_type::TokenType::*;
+use crate::{runtime_error, stmt};
 use std::borrow::Borrow;
+
+type ExprVisitorResult = Result<Literal, RuntimeError>;
+type StmtVisitorResult = Result<(), RuntimeError>;
 
 pub(crate) struct Interpreter {
     environment: Environment,
@@ -19,15 +18,15 @@ impl Interpreter {
             environment: Environment::new(),
         }
     }
-    fn evaluate(&self, expr: &dyn Expr) -> VisitorReturnResult {
+    fn evaluate(&self, expr: &Expr) -> ExprVisitorResult {
         expr.accept(self)
     }
 
-    fn execute(&mut self, stmt: &dyn Stmt) -> VisitorReturnResult {
+    fn execute(&mut self, stmt: &Stmt) -> StmtVisitorResult {
         stmt.accept(self)
     }
 
-    // fn evaluate_literal(&self, expr: &dyn Expr) -> Result<Literal, RuntimeError> {
+    // fn evaluate_literal(&self, expr: &Expr) -> Result<Literal, RuntimeError> {
     //     match expr.accept(self) {
     //         Ok(VRLiteral(literal)) => {
     //             println!("{}", self.stringify(&literal));
@@ -40,9 +39,9 @@ impl Interpreter {
     //         _ => panic!(),
     //     }
     // }
-    pub(crate) fn interpret(&mut self, statements: Vec<Box<dyn Stmt>>) -> Result<(), RuntimeError> {
+    pub(crate) fn interpret(&mut self, statements: Vec<Box<Stmt>>) -> Result<(), RuntimeError> {
         for statement in statements {
-            if let Err(VRRuntimeErr(err)) = self.execute(statement.borrow()) {
+            if let Err(err) = self.execute(statement.borrow()) {
                 runtime_error(&err);
                 return Err(err);
             }
@@ -70,61 +69,53 @@ pub(crate) struct RuntimeError {
     pub(crate) token: Token,
 }
 
-fn construct_error(message: &str, token: &Token) -> VisitorReturnResult {
-    Err(VRRuntimeErr(RuntimeError {
+fn construct_error(message: &str, token: &Token) -> ExprVisitorResult {
+    Err(RuntimeError {
         message: String::from(message),
         token: token.clone(),
-    }))
+    })
 }
 
-fn construct_number_error(token: &Token) -> VisitorReturnResult {
+fn construct_number_error(token: &Token) -> ExprVisitorResult {
     construct_error("Operands must be numbers.", token)
 }
 
-impl expr::Visitor for Interpreter {
-    fn visit_literalexpr_expr(&self, expr: &LiteralExpr) -> VisitorReturnResult {
-        Ok(VRLiteral(expr.value.clone()))
+impl expr::Visitor<ExprVisitorResult> for Interpreter {
+    fn visit_literalexpr_expr(&self, expr: &LiteralExpr) -> ExprVisitorResult {
+        Ok(expr.value.clone())
     }
 
-    fn visit_grouping_expr(&self, expr: &Grouping) -> VisitorReturnResult {
+    fn visit_grouping_expr(&self, expr: &Grouping) -> ExprVisitorResult {
         self.evaluate(expr.expression.borrow())
     }
 
-    fn visit_unary_expr(&self, expr: &Unary) -> VisitorReturnResult {
+    fn visit_unary_expr(&self, expr: &Unary) -> ExprVisitorResult {
         let right = self.evaluate(expr.right.borrow())?;
         match expr.operator.token_type {
             Minus => {
                 if !right.is_float() {
                     construct_number_error(&expr.operator)
                 } else {
-                    Ok(VisitorReturnOk::wrap_float(-right.unwrap_float()))
+                    Ok(Literal::wrap_float(-right.unwrap_float()))
                 }
             }
-            Bang => Ok(right.unwrap_negate_and_wrap_vrl_bool()),
+            Bang => Ok(right.negate_and_wrap()),
             _ => panic!(), //TODO:
         }
     }
 
-    fn visit_binary_expr(&self, expr: &Binary) -> VisitorReturnResult {
+    fn visit_binary_expr(&self, expr: &Binary) -> ExprVisitorResult {
         let left = self.evaluate(expr.left.borrow())?;
         let right = self.evaluate(expr.right.borrow())?;
         match expr.operator.token_type {
-            BangEqual => {
-                return Ok(VisitorReturnOk::wrap_bool(
-                    !left.is_vrl_equal_or_panic(&right),
-                ))
-            }
-            EqualEqual => {
-                return Ok(VisitorReturnOk::wrap_bool(
-                    left.is_vrl_equal_or_panic(&right),
-                ))
-            }
+            BangEqual => return Ok(Literal::wrap_bool(!left.is_equal(&right))),
+            EqualEqual => return Ok(Literal::wrap_bool(left.is_equal(&right))),
             _ => (),
         }
         if left.is_string() && right.is_string() && expr.operator.token_type == Plus {
             let mut concat_string = String::from(left.unwrap_str_literal());
             concat_string.push_str(right.unwrap_str_literal());
-            return Ok(VisitorReturnOk::wrap_string_literal(concat_string));
+            return Ok(Literal::wrap_string_literal(concat_string));
         }
         if !right.is_float() || !left.is_float() {
             return construct_number_error(&expr.operator);
@@ -133,51 +124,42 @@ impl expr::Visitor for Interpreter {
         let left = left.unwrap_float();
         let right = right.unwrap_float();
         match expr.operator.token_type {
-            Minus => Ok(VisitorReturnOk::wrap_float(left - right)),
-            Plus => Ok(VisitorReturnOk::wrap_float(left + right)),
-            Slash => Ok(VisitorReturnOk::wrap_float(left / right)),
-            Star => Ok(VisitorReturnOk::wrap_float(left * right)),
-            Greater => Ok(VisitorReturnOk::wrap_bool(left > right)),
-            GreaterEqual => Ok(VisitorReturnOk::wrap_bool(left >= right)),
-            Less => Ok(VisitorReturnOk::wrap_bool(left < right)),
-            LessEqual => Ok(VisitorReturnOk::wrap_bool(left <= right)),
+            Minus => Ok(Literal::wrap_float(left - right)),
+            Plus => Ok(Literal::wrap_float(left + right)),
+            Slash => Ok(Literal::wrap_float(left / right)),
+            Star => Ok(Literal::wrap_float(left * right)),
+            Greater => Ok(Literal::wrap_bool(left > right)),
+            GreaterEqual => Ok(Literal::wrap_bool(left >= right)),
+            Less => Ok(Literal::wrap_bool(left < right)),
+            LessEqual => Ok(Literal::wrap_bool(left <= right)),
             _ => panic!(), //TODO:
         }
     }
 
-    fn visit_variable_expr(&self, expr: &Variable) -> VisitorReturnResult {
+    fn visit_variable_expr(&self, expr: &Variable) -> ExprVisitorResult {
         match self.environment.get(&expr.name) {
-            Ok(literal) => Ok(VRLiteral(literal.clone())),
-            Err(runtime_error) => Err(VisitorReturnError::VRRuntimeErr(runtime_error)),
+            Ok(literal) => Ok(literal.clone()),
+            Err(runtime_error) => Err(runtime_error),
         }
     }
 }
 
-impl stmt::Visitor for Interpreter {
-    fn visit_expression_stmt(&self, expr: &ExpressionStmt) -> VisitorReturnResult {
-        self.evaluate(expr.expression.borrow())?;
-        Ok(NoResult)
+impl stmt::Visitor<StmtVisitorResult> for Interpreter {
+    fn visit_expression_stmt(&self, stmt: &Expression) -> StmtVisitorResult {
+        self.evaluate(stmt.expression.borrow())?;
+        Ok(())
     }
 
-    fn visit_print_stmt(&self, expr: &PrintStmt) -> VisitorReturnResult {
-        match self.evaluate(expr.expression.borrow())? {
-            VRLiteral(value) => {
-                println!("{}", self.stringify(&value));
-                Ok(NoResult)
-            }
-            _ => panic!(), // Should not reach here.
-        }
+    fn visit_print_stmt(&self, stmt: &Print) -> StmtVisitorResult {
+        println!(
+            "{}",
+            self.stringify(&self.evaluate(stmt.expression.borrow())?)
+        );
+        Ok(())
     }
-
-    fn visit_var_stmt(&mut self, expr: &VarStmt) -> VisitorReturnResult {
-        let eval_result = self.evaluate(expr.initializer.borrow())?;
-        match eval_result {
-            VRLiteral(literal) => {
-                self.environment.define(expr.name.lexeme.clone(), literal);
-            }
-            _ => (),
-        }
-
-        Ok(VisitorReturnOk::NoResult)
+    fn visit_var_stmt(&mut self, stmt: &Var) -> StmtVisitorResult {
+        let literal = self.evaluate(stmt.initializer.borrow())?;
+        self.environment.define(stmt.name.lexeme.clone(), literal);
+        Ok(())
     }
 }

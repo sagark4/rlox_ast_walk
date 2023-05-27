@@ -1,13 +1,10 @@
 use interpreter::{Interpreter, RuntimeError};
 use parser::Parser;
 use scanner::Scanner;
-use std::borrow::Borrow;
 use std::env;
 use std::fs::File;
 use std::io::{Read, Write};
 use token::Token;
-
-use ast_printer::AstPrinter;
 
 use crate::token_type::TokenType;
 mod ast_printer;
@@ -61,10 +58,10 @@ fn run(source: &str) {
     // }
     let mut parser = Parser::from(scanner.tokens);
     match parser.parse() {
-        Ok(expr) => {
+        Ok(statements) => {
             // let ast_printer = AstPrinter {};
             // println!("{}", ast_printer.print(expr.borrow()));
-            match (Interpreter {}).interpret(expr.borrow()) {
+            match (Interpreter {}).interpret(statements) {
                 Err(_) => println!("Runtime error."),
                 _ => (),
             }

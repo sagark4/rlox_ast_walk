@@ -4,6 +4,7 @@ use crate::token::Token;
 pub(crate) enum VisitorReturnOk {
     VRString(String),
     VRLiteral(Literal),
+    NoResult,
 }
 
 pub(crate) enum VisitorReturnError {

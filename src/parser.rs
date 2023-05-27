@@ -1,7 +1,8 @@
-use crate::error_with_token;
 use crate::expr::{Binary, Expr, Grouping, LiteralExpr, Unary};
+use crate::stmt::Stmt;
 use crate::token::{Literal::*, Token};
 use crate::token_type::TokenType::{self, *};
+use crate::{error_with_token, stmt};
 
 pub(crate) struct Parser {
     tokens: Vec<Token>,
@@ -10,17 +11,45 @@ pub(crate) struct Parser {
 
 pub(crate) struct ParseError {}
 type ExprResult = Result<Box<dyn Expr>, ParseError>;
-
+type StmtResult = Result<Box<dyn Stmt>, ParseError>;
+type ParseResult = Result<Vec<Box<dyn Stmt>>, ParseError>;
 impl Parser {
     pub(crate) fn from(tokens: Vec<Token>) -> Self {
         Self { tokens, current: 0 }
     }
-    pub(crate) fn parse(&mut self) -> ExprResult {
-        self.expression()
+
+    pub(crate) fn parse(&mut self) -> ParseResult {
+        let mut statements = Vec::new();
+        while !self.is_at_end() {
+            statements.push(self.statement()?);
+        }
+        Ok(statements)
     }
+
     fn expression(&mut self) -> ExprResult {
         self.equality()
     }
+
+    fn statement(&mut self) -> StmtResult {
+        if self.match_next_token_type(vec![Print]) {
+            self.print_statement()
+        } else {
+            self.expression_statement()
+        }
+    }
+
+    fn print_statement(&mut self) -> StmtResult {
+        let value = self.expression()?;
+        self.consume(Semicolon, "Expect ';' after value.")?;
+        Ok(stmt::PrintStmt::new(value))
+    }
+
+    fn expression_statement(&mut self) -> StmtResult {
+        let expr = self.expression()?;
+        self.consume(Semicolon, "Expect ';' after expression.")?;
+        Ok(stmt::ExpressionStmt::new(expr))
+    }
+
     fn equality(&mut self) -> ExprResult {
         let mut expr = self.comparison()?;
         while self.match_next_token_type(vec![BangEqual, EqualEqual]) {

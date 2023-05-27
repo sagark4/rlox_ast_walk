@@ -1,54 +1,40 @@
-use crate::expr::Expr;
-use crate::interpreter::RuntimeError;
-use crate::token::Literal;
-use crate::token::Token;
-
-pub(crate) enum VisitorReturnOk {
-    NoResult,
-}
-
-pub(crate) enum VisitorReturnError {
-    VRRuntimeErr(RuntimeError),
-}
-
-pub(crate) type VisitorReturnResult = Result<VisitorReturnOk, VisitorReturnError>;
-
+use crate::expr::{Expr, VisitorReturnResult};
 pub(crate) trait Stmt {
     fn accept(&self, visitor: &dyn Visitor) -> VisitorReturnResult;
 }
 
 pub(crate) trait Visitor {
-    fn visit_expression_stmt(&self, expr: &Expression) -> VisitorReturnResult;
-    fn visit_print_stmt(&self, expr: &Print) -> VisitorReturnResult;
+    fn visit_expression_stmt(&self, expr: &ExpressionStmt) -> VisitorReturnResult;
+    fn visit_print_stmt(&self, expr: &PrintStmt) -> VisitorReturnResult;
 }
 
-pub(crate) struct Expression {
+pub(crate) struct ExpressionStmt {
     pub(crate) expression: Box<dyn Expr>,
 }
 
-impl Stmt for Expression {
+impl Stmt for ExpressionStmt {
     fn accept(&self, visitor: &dyn Visitor) -> VisitorReturnResult {
         visitor.visit_expression_stmt(&self)
     }
 }
 
-impl Expression {
+impl ExpressionStmt {
     pub(crate) fn new(expression: Box<dyn Expr>) -> Box<Self> {
         Box::new(Self { expression })
     }
 }
 
-pub(crate) struct Print {
+pub(crate) struct PrintStmt {
     pub(crate) expression: Box<dyn Expr>,
 }
 
-impl Stmt for Print {
+impl Stmt for PrintStmt {
     fn accept(&self, visitor: &dyn Visitor) -> VisitorReturnResult {
         visitor.visit_print_stmt(&self)
     }
 }
 
-impl Print {
+impl PrintStmt {
     pub(crate) fn new(expression: Box<dyn Expr>) -> Box<Self> {
         Box::new(Self { expression })
     }

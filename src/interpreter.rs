@@ -1,5 +1,5 @@
 use crate::environment::Environment;
-use crate::expr::{self, Binary, Expr, Grouping, LiteralExpr, Unary, Variable};
+use crate::expr::{self, Binary, Expr, Grouping, LiteralExpr, Unary, Variable, Assign};
 use crate::stmt::{Expression, Print, Stmt, Var};
 use crate::token::{Literal, Token};
 use crate::token_type::TokenType::*;
@@ -18,7 +18,7 @@ impl Interpreter {
             environment: Environment::new(),
         }
     }
-    fn evaluate(&self, expr: &Expr) -> ExprVisitorResult {
+    fn evaluate(&mut self, expr: &Expr) -> ExprVisitorResult {
         expr.accept(self)
     }
 
@@ -26,19 +26,6 @@ impl Interpreter {
         stmt.accept(self)
     }
 
-    // fn evaluate_literal(&self, expr: &Expr) -> Result<Literal, RuntimeError> {
-    //     match expr.accept(self) {
-    //         Ok(VRLiteral(literal)) => {
-    //             println!("{}", self.stringify(&literal));
-    //             Ok(literal)
-    //         }
-    //         Err(VRRuntimeErr(err)) => {
-    //             crate::runtime_error(&err);
-    //             Err(err)
-    //         }
-    //         _ => panic!(),
-    //     }
-    // }
     pub(crate) fn interpret(&mut self, statements: Vec<Stmt>) -> Result<(), RuntimeError> {
         for statement in statements {
             if let Err(err) = self.execute(statement.borrow()) {
@@ -81,15 +68,15 @@ fn construct_number_error(token: &Token) -> ExprVisitorResult {
 }
 
 impl expr::Visitor<ExprVisitorResult> for Interpreter {
-    fn visit_literalexpr_expr(&self, expr: &LiteralExpr) -> ExprVisitorResult {
+    fn visit_literalexpr_expr(&mut self, expr: &LiteralExpr) -> ExprVisitorResult {
         Ok(expr.value.clone())
     }
 
-    fn visit_grouping_expr(&self, expr: &Grouping) -> ExprVisitorResult {
+    fn visit_grouping_expr(&mut self, expr: &Grouping) -> ExprVisitorResult {
         self.evaluate(expr.expression.borrow())
     }
 
-    fn visit_unary_expr(&self, expr: &Unary) -> ExprVisitorResult {
+    fn visit_unary_expr(&mut self, expr: &Unary) -> ExprVisitorResult {
         let right = self.evaluate(expr.right.borrow())?;
         match expr.operator.token_type {
             Minus => {
@@ -104,7 +91,7 @@ impl expr::Visitor<ExprVisitorResult> for Interpreter {
         }
     }
 
-    fn visit_binary_expr(&self, expr: &Binary) -> ExprVisitorResult {
+    fn visit_binary_expr(&mut self, expr: &Binary) -> ExprVisitorResult {
         let left = self.evaluate(expr.left.borrow())?;
         let right = self.evaluate(expr.right.borrow())?;
         match expr.operator.token_type {
@@ -136,21 +123,29 @@ impl expr::Visitor<ExprVisitorResult> for Interpreter {
         }
     }
 
-    fn visit_variable_expr(&self, expr: &Variable) -> ExprVisitorResult {
+    fn visit_variable_expr(&mut self, expr: &Variable) -> ExprVisitorResult {
         self.environment.get(&expr.name)
+    }
+
+    fn visit_assign_expr(&mut self, expr: &Assign) -> ExprVisitorResult {
+        let value = self.evaluate(&expr.value)?;
+        self.environment.assign(&expr.name, value.clone())?;
+        Ok(value)
+
     }
 }
 
 impl stmt::Visitor<StmtVisitorResult> for Interpreter {
-    fn visit_expression_stmt(&self, stmt: &Expression) -> StmtVisitorResult {
+    fn visit_expression_stmt(&mut self, stmt: &Expression) -> StmtVisitorResult {
         self.evaluate(stmt.expression.borrow())?;
         Ok(())
     }
 
-    fn visit_print_stmt(&self, stmt: &Print) -> StmtVisitorResult {
+    fn visit_print_stmt(&mut self, stmt: &Print) -> StmtVisitorResult {
+        let value = self.evaluate(stmt.expression.borrow())?;
         println!(
             "{}",
-            self.stringify(&self.evaluate(stmt.expression.borrow())?)
+            self.stringify(&value)
         );
         Ok(())
     }

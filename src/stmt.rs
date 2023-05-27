@@ -16,8 +16,8 @@ impl Stmt {
     }
 }
 pub(crate) trait Visitor<R> {
-    fn visit_expression_stmt(&self, stmt: &Expression) -> R;
-    fn visit_print_stmt(&self, stmt: &Print) -> R;
+    fn visit_expression_stmt(&mut self, stmt: &Expression) -> R;
+    fn visit_print_stmt(&mut self, stmt: &Print) -> R;
     fn visit_var_stmt(&mut self, stmt: &Var) -> R;
 }
 

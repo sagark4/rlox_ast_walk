@@ -17,18 +17,26 @@ impl Environment {
     pub(crate) fn define(&mut self, name: String, value: Literal) {
         self.values.insert(name, value);
     }
+
     pub(crate) fn get(&self, name: &Token) -> Result<Literal, RuntimeError> {
         match self.values.get(&name.lexeme) {
             Some(literal) => Ok(literal.clone()),
-            None => {
-                let mut message = String::from("Undefined variable '");
-                message.push_str(&name.lexeme);
-                message.push_str("'.");
-                Err(RuntimeError {
-                    message,
-                    token: name.clone(),
-                })
-            }
+            None => Err(RuntimeError {
+                message: format!("Undefined variable '{}'.", &name.lexeme),
+                token: name.clone(),
+            }),
+        }
+    }
+
+    pub(crate) fn assign(&mut self, name: &Token, value: Literal) -> Result<(), RuntimeError> {
+        if self.values.contains_key(&name.lexeme) {
+            self.values.insert(name.lexeme.clone(), value);
+            Ok(())
+        } else {
+            Err(RuntimeError {
+                message: format!("Undefined variable '{}'.", name.lexeme),
+                token: name.clone(),
+            })
         }
     }
 }

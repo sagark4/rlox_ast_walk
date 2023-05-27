@@ -1,6 +1,8 @@
 use crate::error_with_token;
-use crate::expr::Expr::{BinaryExpr, GroupingExpr, LiteralExprExpr, UnaryExpr, VariableExpr};
-use crate::expr::{Binary, Expr, Grouping, LiteralExpr, Unary, Variable};
+use crate::expr::Expr::{
+    AssignExpr, BinaryExpr, GroupingExpr, LiteralExprExpr, UnaryExpr, VariableExpr,
+};
+use crate::expr::{Binary, Expr, Grouping, LiteralExpr, Unary, Variable, Assign};
 use crate::stmt::Stmt::{ExpressionStmt, PrintStmt, VarStmt};
 use crate::stmt::{Expression, Print, Stmt, Var};
 use crate::token::{
@@ -32,7 +34,7 @@ impl Parser {
     }
 
     fn expression(&mut self) -> ExprResult {
-        self.equality()
+        self.assignment()
     }
 
     fn declaration(&mut self) -> StmtResult {
@@ -75,6 +77,21 @@ impl Parser {
         let expr = self.expression()?;
         self.consume(Semicolon, "Expect ';' after expression.")?;
         Ok(ExpressionStmt(Expression::new(expr)))
+    }
+
+    fn assignment(&mut self) -> ExprResult {
+        let expr = self.equality()?;
+        if self.match_next_token_type(vec![Equal]) {
+            let equals = self.previous();
+            let value = self.assignment()?;
+            if let VariableExpr(var_expr) = expr {
+                return Ok(AssignExpr(Assign::new(var_expr.name.clone(), value)));
+            } else {
+                return Err(self.error(&equals, "Invalid assignment target."));
+            }
+        } else {
+            return Ok(expr);
+        }
     }
 
     fn equality(&mut self) -> ExprResult {

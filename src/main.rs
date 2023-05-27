@@ -105,10 +105,7 @@ pub(crate) fn error_with_token(token: &Token, message: &str) {
     if token.token_type == TokenType::Eof {
         report(token.line, " at end", message);
     } else {
-        let mut location = String::from(" at '");
-        location.push_str(&token.lexeme);
-        location.push_str("'");
-        report(token.line, &location, message);
+        report(token.line, &format!(" at '{}'", &token.lexeme), message);
     }
 }
 

@@ -9,13 +9,13 @@ use std::borrow::Borrow;
 type ExprVisitorResult = Result<Literal, RuntimeError>;
 type StmtVisitorResult = Result<(), RuntimeError>;
 
-pub(crate) struct Interpreter {
-    environment: Environment,
+pub(crate) struct Interpreter<'a> {
+    environment: Environment<'a>,
 }
-impl Interpreter {
+impl<'a> Interpreter<'a> {
     pub(crate) fn new() -> Self {
         Self {
-            environment: Environment::new(),
+            environment: Environment::new(None),
         }
     }
     fn evaluate(&mut self, expr: &Expr) -> ExprVisitorResult {
@@ -67,7 +67,7 @@ fn construct_number_error(token: &Token) -> ExprVisitorResult {
     construct_error("Operands must be numbers.", token)
 }
 
-impl expr::Visitor<ExprVisitorResult> for Interpreter {
+impl<'a> expr::Visitor<ExprVisitorResult> for Interpreter<'a> {
     fn visit_literalexpr_expr(&mut self, expr: &LiteralExpr) -> ExprVisitorResult {
         Ok(expr.value.clone())
     }
@@ -135,7 +135,7 @@ impl expr::Visitor<ExprVisitorResult> for Interpreter {
     }
 }
 
-impl stmt::Visitor<StmtVisitorResult> for Interpreter {
+impl<'a> stmt::Visitor<StmtVisitorResult> for Interpreter<'a> {
     fn visit_expression_stmt(&mut self, stmt: &Expression) -> StmtVisitorResult {
         self.evaluate(stmt.expression.borrow())?;
         Ok(())

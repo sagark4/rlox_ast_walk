@@ -4,14 +4,16 @@ use crate::{
 };
 use std::collections::HashMap;
 
-pub(crate) struct Environment {
+pub(crate) struct Environment<'a> {
     values: HashMap<String, Literal>,
+    enclosing: Option<&'a Environment<'a>>,
 }
 
-impl Environment {
-    pub(crate) fn new() -> Self {
+impl<'a> Environment<'a> {
+    pub(crate) fn new(enclosing: Option<&'a Environment<'a>>) -> Self {
         Self {
             values: HashMap::new(),
+            enclosing,
         }
     }
     pub(crate) fn define(&mut self, name: String, value: Literal) {

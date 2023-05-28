@@ -6,7 +6,7 @@ use std::collections::HashMap;
 
 pub(crate) struct Environment {
     values: HashMap<String, Literal>,
-    enclosing: Option<Box<Environment>>,
+    pub(crate) enclosing: Option<Box<Environment>>,
 }
 
 impl Environment {
@@ -16,6 +16,7 @@ impl Environment {
             enclosing,
         })
     }
+    
     pub(crate) fn define(&mut self, name: String, value: Literal) {
         self.values.insert(name, value);
     }

@@ -1,29 +1,46 @@
 use crate::environment::Environment;
-use crate::expr::{self, Binary, Expr, Grouping, LiteralExpr, Unary, Variable, Assign};
-use crate::stmt::{Expression, Print, Stmt, Var};
+use crate::expr::{self, Assign, Binary, Expr, Grouping, LiteralExpr, Unary, Variable};
+use crate::stmt::{Block, Expression, Print, Stmt, Var};
 use crate::token::{Literal, Token};
 use crate::token_type::TokenType::*;
 use crate::{runtime_error, stmt};
 use std::borrow::Borrow;
+use std::ptr;
 
 type ExprVisitorResult = Result<Literal, RuntimeError>;
 type StmtVisitorResult = Result<(), RuntimeError>;
 
-pub(crate) struct Interpreter<'a> {
-    environment: Environment<'a>,
+pub(crate) struct Interpreter {
+    environment: Box<Environment>,
 }
-impl<'a> Interpreter<'a> {
+impl Interpreter {
     pub(crate) fn new() -> Self {
         Self {
             environment: Environment::new(None),
         }
     }
+
     fn evaluate(&mut self, expr: &Expr) -> ExprVisitorResult {
         expr.accept(self)
     }
 
     fn execute(&mut self, stmt: &Stmt) -> StmtVisitorResult {
         stmt.accept(self)
+    }
+
+    fn execute_block(&mut self, statements: &[Stmt]) -> Result<(), RuntimeError> {
+        unsafe {
+            let previous = ptr::read(&self.environment);
+            ptr::write(
+                &mut self.environment,
+                Environment::new(Some(ptr::read(&self.environment))),
+            );
+            for statement in statements {
+                self.execute(statement)?
+            }
+            ptr::write(&mut self.environment, previous);
+        }
+        Ok(())
     }
 
     pub(crate) fn interpret(&mut self, statements: Vec<Stmt>) -> Result<(), RuntimeError> {
@@ -67,7 +84,7 @@ fn construct_number_error(token: &Token) -> ExprVisitorResult {
     construct_error("Operands must be numbers.", token)
 }
 
-impl<'a> expr::Visitor<ExprVisitorResult> for Interpreter<'a> {
+impl expr::Visitor<ExprVisitorResult> for Interpreter {
     fn visit_literalexpr_expr(&mut self, expr: &LiteralExpr) -> ExprVisitorResult {
         Ok(expr.value.clone())
     }
@@ -131,11 +148,10 @@ impl<'a> expr::Visitor<ExprVisitorResult> for Interpreter<'a> {
         let value = self.evaluate(&expr.value)?;
         self.environment.assign(&expr.name, value.clone())?;
         Ok(value)
-
     }
 }
 
-impl<'a> stmt::Visitor<StmtVisitorResult> for Interpreter<'a> {
+impl stmt::Visitor<StmtVisitorResult> for Interpreter {
     fn visit_expression_stmt(&mut self, stmt: &Expression) -> StmtVisitorResult {
         self.evaluate(stmt.expression.borrow())?;
         Ok(())
@@ -143,15 +159,18 @@ impl<'a> stmt::Visitor<StmtVisitorResult> for Interpreter<'a> {
 
     fn visit_print_stmt(&mut self, stmt: &Print) -> StmtVisitorResult {
         let value = self.evaluate(stmt.expression.borrow())?;
-        println!(
-            "{}",
-            self.stringify(&value)
-        );
+        println!("{}", self.stringify(&value));
         Ok(())
     }
+
     fn visit_var_stmt(&mut self, stmt: &Var) -> StmtVisitorResult {
         let literal = self.evaluate(stmt.initializer.borrow())?;
         self.environment.define(stmt.name.lexeme.clone(), literal);
+        Ok(())
+    }
+
+    fn visit_block_stmt(&mut self, stmt: &Block) -> StmtVisitorResult {
+        self.execute_block(&stmt.statements)?;
         Ok(())
     }
 }

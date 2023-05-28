@@ -2,9 +2,9 @@ use crate::error_with_token;
 use crate::expr::Expr::{
     AssignExpr, BinaryExpr, GroupingExpr, LiteralExprExpr, UnaryExpr, VariableExpr,
 };
-use crate::expr::{Binary, Expr, Grouping, LiteralExpr, Unary, Variable, Assign};
-use crate::stmt::Stmt::{ExpressionStmt, PrintStmt, VarStmt};
-use crate::stmt::{Expression, Print, Stmt, Var};
+use crate::expr::{Assign, Binary, Expr, Grouping, LiteralExpr, Unary, Variable};
+use crate::stmt::Stmt::{BlockStmt, ExpressionStmt, PrintStmt, VarStmt};
+use crate::stmt::{Block, Expression, Print, Stmt, Var};
 use crate::token::{
     Literal::{self, *},
     Token,
@@ -52,6 +52,8 @@ impl Parser {
     fn statement(&mut self) -> StmtResult {
         if self.match_next_token_type(vec![Print]) {
             self.print_statement()
+        } else if self.match_next_token_type(vec![LeftBrace]) {
+            self.block()
         } else {
             self.expression_statement()
         }
@@ -77,6 +79,15 @@ impl Parser {
         let expr = self.expression()?;
         self.consume(Semicolon, "Expect ';' after expression.")?;
         Ok(ExpressionStmt(Expression::new(expr)))
+    }
+
+    fn block(&mut self) -> StmtResult {
+        let mut statements = Vec::new();
+        while !self.check_type(RightBrace) && !self.is_at_end() {
+            statements.push(self.declaration()?)
+        }
+        self.consume(RightBrace, "Expect '}' after block.")?;
+        Ok(BlockStmt(Block::new(statements)))
     }
 
     fn assignment(&mut self) -> ExprResult {

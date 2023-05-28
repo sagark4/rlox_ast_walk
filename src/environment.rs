@@ -4,17 +4,17 @@ use crate::{
 };
 use std::collections::HashMap;
 
-pub(crate) struct Environment<'a> {
+pub(crate) struct Environment {
     values: HashMap<String, Literal>,
-    enclosing: Option<&'a Environment<'a>>,
+    enclosing: Option<Box<Environment>>,
 }
 
-impl<'a> Environment<'a> {
-    pub(crate) fn new(enclosing: Option<&'a Environment<'a>>) -> Self {
-        Self {
+impl Environment {
+    pub(crate) fn new(enclosing: Option<Box<Environment>>) -> Box<Self> {
+        Box::new(Self {
             values: HashMap::new(),
             enclosing,
-        }
+        })
     }
     pub(crate) fn define(&mut self, name: String, value: Literal) {
         self.values.insert(name, value);
@@ -23,10 +23,16 @@ impl<'a> Environment<'a> {
     pub(crate) fn get(&self, name: &Token) -> Result<Literal, RuntimeError> {
         match self.values.get(&name.lexeme) {
             Some(literal) => Ok(literal.clone()),
-            None => Err(RuntimeError {
-                message: format!("Undefined variable '{}'.", &name.lexeme),
-                token: name.clone(),
-            }),
+            None => {
+                if let Some(parent_env) = &self.enclosing {
+                    parent_env.get(name)
+                } else {
+                    Err(RuntimeError {
+                        message: format!("Undefined variable '{}'.", &name.lexeme),
+                        token: name.clone(),
+                    })
+                }
+            }
         }
     }
 
@@ -34,6 +40,8 @@ impl<'a> Environment<'a> {
         if self.values.contains_key(&name.lexeme) {
             self.values.insert(name.lexeme.clone(), value);
             Ok(())
+        } else if let Some(parent_env) = &mut self.enclosing {
+            parent_env.assign(name, value)
         } else {
             Err(RuntimeError {
                 message: format!("Undefined variable '{}'.", name.lexeme),

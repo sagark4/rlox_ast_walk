@@ -5,7 +5,7 @@ use crate::token::{Literal, Token};
 use crate::token_type::TokenType::*;
 use crate::{runtime_error, stmt};
 use std::borrow::Borrow;
-use std::mem::swap;
+use std::ptr;
 
 type ExprVisitorResult = Result<Literal, RuntimeError>;
 type StmtVisitorResult = Result<(), RuntimeError>;
@@ -29,17 +29,17 @@ impl Interpreter {
     }
 
     fn execute_block(&mut self, statements: &[Stmt]) -> Result<(), RuntimeError> {
-        let mut tmp_env = Environment::new(None);
-        swap(&mut tmp_env, &mut self.environment);
-        self.environment = Environment::new(Some(tmp_env));
-        for statement in statements {
-            self.execute(statement)?
-        }
-        let mut tmp_env = Environment::new(None);
-        swap(&mut tmp_env, &mut self.environment);
-        // Always be true
-        if let Some(parent) = tmp_env.enclosing {
-            self.environment = parent;
+        unsafe {
+            let tmp_env = ptr::read(&self.environment);
+            ptr::write(&mut self.environment, Environment::new(Some(tmp_env)));
+            for statement in statements {
+                self.execute(statement)?
+            }
+            let tmp_env = ptr::read(&self.environment);
+            // Always be true
+            if let Some(parent) = tmp_env.enclosing {
+                ptr::write(&mut self.environment, parent);
+            }
         }
         Ok(())
     }

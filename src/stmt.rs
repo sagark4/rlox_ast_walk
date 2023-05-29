@@ -6,6 +6,7 @@ pub(crate) enum Stmt {
     VarStmt(Box<Var>),
     BlockStmt(Box<Block>),
     IfStmt(Box<If>),
+    WhileStmt(Box<While>),
 }
 
 impl Stmt {
@@ -16,6 +17,7 @@ impl Stmt {
             Stmt::VarStmt(stmt) => visitor.visit_var_stmt(stmt),
             Stmt::BlockStmt(stmt) => visitor.visit_block_stmt(stmt),
             Stmt::IfStmt(stmt) => visitor.visit_if_stmt(stmt),
+            Stmt::WhileStmt(stmt) => visitor.visit_while_stmt(stmt),
         }
     }
 }
@@ -25,6 +27,7 @@ pub(crate) trait Visitor<R> {
     fn visit_var_stmt(&mut self, stmt: &Var) -> R;
     fn visit_block_stmt(&mut self, stmt: &Block) -> R;
     fn visit_if_stmt(&mut self, stmt: &If) -> R;
+    fn visit_while_stmt(&mut self, stmt: &While) -> R;
 }
 
 pub(crate) struct Expression {
@@ -84,5 +87,16 @@ impl If {
             then_branch,
             else_branch,
         })
+    }
+}
+
+pub(crate) struct While {
+    pub(crate) condition: Expr,
+    pub(crate) body: Stmt,
+}
+
+impl While {
+    pub(crate) fn new(condition: Expr, body: Stmt) -> Box<Self> {
+        Box::new(Self { condition, body })
     }
 }

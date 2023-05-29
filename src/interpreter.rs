@@ -1,6 +1,6 @@
 use crate::environment::Environment;
 use crate::expr::{self, Assign, Binary, Expr, Grouping, LiteralExpr, Logical, Unary, Variable};
-use crate::stmt::{Block, Expression, If, Print, Stmt, Var};
+use crate::stmt::{Block, Expression, If, Print, Stmt, Var, While};
 use crate::token::{Literal, Token};
 use crate::token_type::TokenType::*;
 use crate::{runtime_error, stmt};
@@ -197,5 +197,12 @@ impl stmt::Visitor<StmtVisitorResult> for Interpreter {
         } else {
             Ok(())
         }
+    }
+
+    fn visit_while_stmt(&mut self, stmt: &While) -> StmtVisitorResult {
+        while self.evaluate(&stmt.condition)?.is_truthy() {
+            self.execute(&stmt.body)?
+        }
+        Ok(())
     }
 }

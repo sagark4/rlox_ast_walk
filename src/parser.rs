@@ -3,8 +3,8 @@ use crate::expr::Expr::{
     AssignExpr, BinaryExpr, GroupingExpr, LiteralExprExpr, LogicalExpr, UnaryExpr, VariableExpr,
 };
 use crate::expr::{Assign, Binary, Expr, Grouping, LiteralExpr, Logical, Unary, Variable};
-use crate::stmt::Stmt::{BlockStmt, ExpressionStmt, IfStmt, PrintStmt, VarStmt};
-use crate::stmt::{Block, Expression, If, Print, Stmt, Var};
+use crate::stmt::Stmt::{BlockStmt, ExpressionStmt, IfStmt, PrintStmt, VarStmt, WhileStmt};
+use crate::stmt::{Block, Expression, If, Print, Stmt, Var, While};
 use crate::token::{
     Literal::{self, *},
     Token,
@@ -50,15 +50,63 @@ impl Parser {
     }
 
     fn statement(&mut self) -> StmtResult {
-        if self.match_next_token_type(vec![If]) {
+        if self.match_next_token_type(vec![For]) {
+            self.for_statement()
+        } else if self.match_next_token_type(vec![If]) {
             self.if_statement()
         } else if self.match_next_token_type(vec![Print]) {
             self.print_statement()
+        } else if self.match_next_token_type(vec![While]) {
+            self.while_statement()
         } else if self.match_next_token_type(vec![LeftBrace]) {
             self.block()
         } else {
             self.expression_statement()
         }
+    }
+
+    fn for_statement(&mut self) -> StmtResult {
+        self.consume(LeftParen, "Expect '(' after 'for'.")?;
+
+        let initializer: Option<Stmt>;
+        if self.match_next_token_type(vec![Semicolon]) {
+            initializer = None;
+        } else if self.match_next_token_type(vec![Var]) {
+            initializer = Some(self.var_declaration()?);
+        } else {
+            initializer = Some(self.expression_statement()?);
+        }
+
+        let condition: Expr;
+        if !self.check_type(Semicolon) {
+            condition = self.expression()?;
+        } else {
+            condition = LiteralExprExpr(LiteralExpr::new(BoolLiteral(true)));
+        }
+        self.consume(Semicolon, "Expect ';' after loop condition.")?;
+
+        let mut increment = None;
+        if !self.check_type(RightParen) {
+            increment = Some(self.expression()?);
+        }
+        self.consume(RightParen, "Expect ')' after for clauses.")?;
+
+        let mut body = self.statement()?;
+        
+        if let Some(incr_expr) = increment {
+            body = BlockStmt(Block::new(vec![
+                body,
+                ExpressionStmt(Expression::new(incr_expr)),
+            ]));
+        }
+
+        body = WhileStmt(While::new(condition, body));
+
+        if let Some(init_stmt) = initializer {
+            body = BlockStmt(Block::new(vec![init_stmt, body]));
+        }
+
+        Ok(body)
     }
 
     fn if_statement(&mut self) -> StmtResult {
@@ -71,6 +119,14 @@ impl Parser {
             else_branch = Some(self.statement()?);
         }
         Ok(IfStmt(If::new(condition, then_branch, else_branch)))
+    }
+
+    fn while_statement(&mut self) -> StmtResult {
+        self.consume(LeftParen, "Expect '(' after 'while'.")?;
+        let condition = self.expression()?;
+        self.consume(RightParen, "Expect ')' after while condition.")?;
+        let body = self.statement()?;
+        Ok(WhileStmt(While::new(condition, body)))
     }
 
     fn print_statement(&mut self) -> StmtResult {

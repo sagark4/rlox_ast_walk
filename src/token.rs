@@ -1,5 +1,5 @@
 use crate::{token_type::TokenType, lox_callable::LoxCallable};
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub(crate) enum Literal {
     Float(f64),
     StringLiteral(String),
@@ -85,7 +85,7 @@ impl Literal {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub(crate) struct Token {
     pub(crate) token_type: TokenType,
     pub(crate) lexeme: String,

@@ -4,8 +4,10 @@ use crate::expr::Expr::{
     VariableExpr,
 };
 use crate::expr::{Assign, Binary, Call, Expr, Grouping, LiteralExpr, Logical, Unary, Variable};
-use crate::stmt::Stmt::{BlockStmt, ExpressionStmt, IfStmt, PrintStmt, VarStmt, WhileStmt};
-use crate::stmt::{Block, Expression, If, Print, Stmt, Var, While};
+use crate::stmt::Stmt::{
+    BlockStmt, ExpressionStmt, FunctionStmt, IfStmt, PrintStmt, VarStmt, WhileStmt,
+};
+use crate::stmt::{Block, Expression, Function, If, Print, Stmt, Var, While};
 use crate::token::{
     Literal::{self, *},
     Token,
@@ -39,6 +41,9 @@ impl Parser {
     }
 
     fn declaration(&mut self) -> StmtResult {
+        if self.match_next_token_type(vec![Fun]) {
+            return self.function("function");
+        }
         if self.match_next_token_type(vec![Var]) {
             return self.var_declaration();
         }
@@ -60,7 +65,8 @@ impl Parser {
         } else if self.match_next_token_type(vec![While]) {
             self.while_statement()
         } else if self.match_next_token_type(vec![LeftBrace]) {
-            self.block()
+            let statements = self.block()?;
+            Ok(BlockStmt(Block::new(statements)))
         } else {
             self.expression_statement()
         }
@@ -152,13 +158,37 @@ impl Parser {
         Ok(ExpressionStmt(Expression::new(expr)))
     }
 
-    fn block(&mut self) -> StmtResult {
+    fn function(&mut self, kind: &str) -> StmtResult {
+        let name = self.consume(Identifier, &format!("Expect {} name.", kind))?;
+        self.consume(LeftParen, &format!("Expect '(' after {} name.", kind))?;
+        let mut parameters = Vec::new();
+        if !self.check_type(RightParen) {
+            loop {
+                if parameters.len() >= 255 {
+                    let err_tok = self.peek().clone();
+                    self.error(&err_tok, "Can't have more than 255 parameters.");
+                }
+                parameters.push(self.consume(Identifier, "Expect parameter name.")?);
+
+                if !self.match_next_token_type(vec![Comma]) {
+                    break;
+                }
+            }
+        }
+        self.consume(RightParen, &format!("Expect ')' after parameters."))?;
+
+        self.consume(LeftBrace, &format!("Expect '{{' before {} body.", kind))?;
+        let body = self.block()?;
+        Ok(FunctionStmt(Function::new(name, parameters, body)))
+    }
+
+    fn block(&mut self) -> ParseResult {
         let mut statements = Vec::new();
         while !self.check_type(RightBrace) && !self.is_at_end() {
             statements.push(self.declaration()?)
         }
         self.consume(RightBrace, "Expect '}' after block.")?;
-        Ok(BlockStmt(Block::new(statements)))
+        Ok(statements)
     }
 
     fn assignment(&mut self) -> ExprResult {

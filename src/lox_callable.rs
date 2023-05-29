@@ -1,32 +1,55 @@
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::{
+    rc::Rc,
+    time::{SystemTime, UNIX_EPOCH},
+};
 
-use crate::{interpreter::Interpreter, token::Literal};
-
-#[derive(Clone, Debug)]
+use crate::interpreter::ExprVisitorResult;
+use crate::{interpreter::Interpreter, stmt::Function, token::Literal};
+#[derive(Clone)]
 pub(crate) enum LoxCallable {
-    //UserDefFunction(Rc<TODO: define when function declaration is defined
+    UserFunction(Rc<Function>),
     Clock,
 }
 
 impl LoxCallable {
-    pub(crate) fn call(&self, interpreter: &mut Interpreter, arguments: Vec<Literal>) -> Literal {
+    pub(crate) fn call(
+        &self,
+        interpreter: &mut Interpreter,
+        arguments: Vec<Literal>,
+    ) -> ExprVisitorResult {
         match self {
-            LoxCallable::Clock => Literal::Float(
+            LoxCallable::Clock => Ok(Literal::Float(
                 SystemTime::now()
                     .duration_since(UNIX_EPOCH)
                     .unwrap()
                     .as_secs_f64(),
-            ),
+            )),
+            LoxCallable::UserFunction(fun) => {
+                interpreter.env_stack.push_with_parent_id(0);
+                for i in 0..fun.params.len() {
+                    interpreter
+                        .env_stack
+                        .define(fun.params[i].lexeme.clone(), arguments[i].clone());
+                }
+                for statement in &fun.body {
+                    interpreter.execute(statement)?
+                }
+                Ok(Literal::NoneLiteral)
+            }
         }
     }
 
-    pub(crate) fn stringify(&self) -> &str {
+    pub(crate) fn stringify(&self) -> String {
         match self {
-            LoxCallable::Clock => "<native fn>",
+            LoxCallable::Clock => "<native fn>".to_string(),
+            LoxCallable::UserFunction(fun) => format!("<fn {}>", &fun.name.lexeme),
         }
     }
 
     pub(crate) fn arity(&self) -> usize {
-        0
+        match self {
+            LoxCallable::Clock => 0,
+            LoxCallable::UserFunction(fun) => fun.params.len(),
+        }
     }
 }

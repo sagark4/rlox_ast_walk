@@ -2,17 +2,19 @@ use crate::environment_stack::EnvironmentStack;
 use crate::expr::{
     self, Assign, Binary, Call, Expr, Grouping, LiteralExpr, Logical, Unary, Variable,
 };
-use crate::stmt::{Block, Expression, If, Print, Stmt, Var, While};
+use crate::lox_callable::LoxCallable;
+use crate::stmt::{Block, Expression, Function, If, Print, Stmt, Var, While};
 use crate::token::{Literal, Token};
 use crate::token_type::TokenType::*;
 use crate::{runtime_error, stmt};
 use std::borrow::Borrow;
+use std::rc::Rc;
 
-type ExprVisitorResult = Result<Literal, RuntimeError>;
+pub(crate) type ExprVisitorResult = Result<Literal, RuntimeError>;
 type StmtVisitorResult = Result<(), RuntimeError>;
 
 pub(crate) struct Interpreter {
-    env_stack: EnvironmentStack,
+    pub(crate) env_stack: EnvironmentStack,
 }
 impl Interpreter {
     pub(crate) fn new() -> Self {
@@ -29,13 +31,13 @@ impl Interpreter {
         expr.accept(self)
     }
 
-    fn execute(&mut self, stmt: &Stmt) -> StmtVisitorResult {
+    pub(crate) fn execute(&mut self, stmt: &Stmt) -> StmtVisitorResult {
         stmt.accept(self)
     }
 
     pub(crate) fn interpret(&mut self, statements: Vec<Stmt>) -> Result<(), RuntimeError> {
-        for statement in statements {
-            if let Err(err) = self.execute(statement.borrow()) {
+        for statement in &statements {
+            if let Err(err) = self.execute(statement) {
                 runtime_error(&err);
                 return Err(err);
             }
@@ -173,7 +175,7 @@ impl expr::Visitor<ExprVisitorResult> for Interpreter {
                     token: expr.paren.clone(),
                 });
             }
-            return Ok(calleable.call(self, arguments));
+            return calleable.call(self, arguments);
         }
         Err(RuntimeError {
             message: "Can only call functions and classes.".to_string(),
@@ -223,6 +225,14 @@ impl stmt::Visitor<StmtVisitorResult> for Interpreter {
         while self.evaluate(&stmt.condition)?.is_truthy() {
             self.execute(&stmt.body)?
         }
+        Ok(())
+    }
+
+    fn visit_function_stmt(&mut self, stmt: Rc<Function>) -> StmtVisitorResult {
+        self.env_stack.define(
+            stmt.name.lexeme.clone(),
+            Literal::Callable(LoxCallable::UserFunction(stmt)),
+        );
         Ok(())
     }
 }

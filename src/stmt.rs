@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use crate::{expr::Expr, token::Token};
 
 pub(crate) enum Stmt {
@@ -7,6 +9,7 @@ pub(crate) enum Stmt {
     BlockStmt(Box<Block>),
     IfStmt(Box<If>),
     WhileStmt(Box<While>),
+    FunctionStmt(Rc<Function>),
 }
 
 impl Stmt {
@@ -18,6 +21,7 @@ impl Stmt {
             Stmt::BlockStmt(stmt) => visitor.visit_block_stmt(stmt),
             Stmt::IfStmt(stmt) => visitor.visit_if_stmt(stmt),
             Stmt::WhileStmt(stmt) => visitor.visit_while_stmt(stmt),
+            Stmt::FunctionStmt(stmt) => visitor.visit_function_stmt(stmt.clone()),
         }
     }
 }
@@ -28,6 +32,7 @@ pub(crate) trait Visitor<R> {
     fn visit_block_stmt(&mut self, stmt: &Block) -> R;
     fn visit_if_stmt(&mut self, stmt: &If) -> R;
     fn visit_while_stmt(&mut self, stmt: &While) -> R;
+    fn visit_function_stmt(&mut self, stmt: Rc<Function>) -> R;
 }
 
 pub(crate) struct Expression {
@@ -98,5 +103,17 @@ pub(crate) struct While {
 impl While {
     pub(crate) fn new(condition: Expr, body: Stmt) -> Box<Self> {
         Box::new(Self { condition, body })
+    }
+}
+
+pub(crate) struct Function {
+    pub(crate) name: Token,
+    pub(crate) params: Vec<Token>,
+    pub(crate) body: Vec<Stmt>,
+}
+
+impl Function {
+    pub(crate) fn new(name: Token, params: Vec<Token>, body: Vec<Stmt>) -> Rc<Self> {
+        Rc::new(Self { name, params, body })
     }
 }

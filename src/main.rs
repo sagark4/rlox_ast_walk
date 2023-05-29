@@ -7,7 +7,7 @@ use std::io::{Read, Write};
 use token::Token;
 
 use crate::token_type::TokenType;
-mod environment;
+mod environment_stack;
 mod expr;
 mod interpreter;
 mod parser;

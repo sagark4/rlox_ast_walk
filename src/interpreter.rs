@@ -1,22 +1,21 @@
-use crate::environment::Environment;
+use crate::environment_stack::EnvironmentStack;
 use crate::expr::{self, Assign, Binary, Expr, Grouping, LiteralExpr, Logical, Unary, Variable};
 use crate::stmt::{Block, Expression, If, Print, Stmt, Var, While};
 use crate::token::{Literal, Token};
 use crate::token_type::TokenType::*;
 use crate::{runtime_error, stmt};
 use std::borrow::Borrow;
-use std::ptr;
 
 type ExprVisitorResult = Result<Literal, RuntimeError>;
 type StmtVisitorResult = Result<(), RuntimeError>;
 
 pub(crate) struct Interpreter {
-    environment: Box<Environment>,
+    env_stack: EnvironmentStack,
 }
 impl Interpreter {
     pub(crate) fn new() -> Self {
         Self {
-            environment: Environment::new(None),
+            env_stack: EnvironmentStack::new(),
         }
     }
 
@@ -26,22 +25,6 @@ impl Interpreter {
 
     fn execute(&mut self, stmt: &Stmt) -> StmtVisitorResult {
         stmt.accept(self)
-    }
-
-    fn execute_block(&mut self, statements: &[Stmt]) -> Result<(), RuntimeError> {
-        unsafe {
-            let tmp_env = ptr::read(&self.environment);
-            ptr::write(&mut self.environment, Environment::new(Some(tmp_env)));
-            for statement in statements {
-                self.execute(statement)?
-            }
-            let tmp_env = ptr::read(&self.environment);
-            // Always be true
-            if let Some(parent) = tmp_env.enclosing {
-                ptr::write(&mut self.environment, parent);
-            }
-        }
-        Ok(())
     }
 
     pub(crate) fn interpret(&mut self, statements: Vec<Stmt>) -> Result<(), RuntimeError> {
@@ -142,12 +125,12 @@ impl expr::Visitor<ExprVisitorResult> for Interpreter {
     }
 
     fn visit_variable_expr(&mut self, expr: &Variable) -> ExprVisitorResult {
-        self.environment.get(&expr.name)
+        self.env_stack.get(&expr.name)
     }
 
     fn visit_assign_expr(&mut self, expr: &Assign) -> ExprVisitorResult {
         let value = self.evaluate(&expr.value)?;
-        self.environment.assign(&expr.name, value.clone())?;
+        self.env_stack.assign(&expr.name, value.clone())?;
         Ok(value)
     }
 
@@ -180,12 +163,16 @@ impl stmt::Visitor<StmtVisitorResult> for Interpreter {
 
     fn visit_var_stmt(&mut self, stmt: &Var) -> StmtVisitorResult {
         let literal = self.evaluate(stmt.initializer.borrow())?;
-        self.environment.define(stmt.name.lexeme.clone(), literal);
+        self.env_stack.define(stmt.name.lexeme.clone(), literal);
         Ok(())
     }
 
     fn visit_block_stmt(&mut self, stmt: &Block) -> StmtVisitorResult {
-        self.execute_block(&stmt.statements)?;
+        self.env_stack.push_new();
+        for statement in &stmt.statements {
+            self.execute(statement)?
+        }
+        self.env_stack.pop();
         Ok(())
     }
 

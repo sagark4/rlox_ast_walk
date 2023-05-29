@@ -1,10 +1,11 @@
-use crate::token_type::TokenType;
+use crate::{token_type::TokenType, lox_callable::LoxCallable};
 #[derive(Clone, Debug)]
 pub(crate) enum Literal {
     Float(f64),
     StringLiteral(String),
     BoolLiteral(bool),
     NoneLiteral,
+    Callable(LoxCallable)
 }
 impl Literal {
     pub(crate) fn is_truthy(&self) -> bool {

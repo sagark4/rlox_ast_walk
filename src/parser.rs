@@ -303,7 +303,7 @@ impl Parser {
         if !self.check_type(RightParen) {
             loop {
                 if arguments.len() >= 255 {
-                    self.error(self.peek(), "Can't have more than 255 arguments.");
+                    self.error(&self.peek().clone(), "Can't have more than 255 arguments.");
                 }
                 arguments.push(self.expression()?);
                 if !self.match_next_token_type(vec![Comma]) {

@@ -1,5 +1,7 @@
 use crate::environment_stack::EnvironmentStack;
-use crate::expr::{self, Assign, Binary, Expr, Grouping, LiteralExpr, Logical, Unary, Variable};
+use crate::expr::{
+    self, Assign, Binary, Call, Expr, Grouping, LiteralExpr, Logical, Unary, Variable,
+};
 use crate::stmt::{Block, Expression, If, Print, Stmt, Var, While};
 use crate::token::{Literal, Token};
 use crate::token_type::TokenType::*;
@@ -17,6 +19,10 @@ impl Interpreter {
         Self {
             env_stack: EnvironmentStack::new(),
         }
+    }
+
+    pub(crate) fn define_global(&mut self, name: String, value: Literal) {
+        self.env_stack.define_global(name, value);
     }
 
     fn evaluate(&mut self, expr: &Expr) -> ExprVisitorResult {
@@ -48,6 +54,7 @@ impl Interpreter {
                 }
             }
             Literal::StringLiteral(s) => s.clone(),
+            Literal::Callable(callable) => callable.stringify().to_string(),
         }
     }
 }
@@ -146,6 +153,32 @@ impl expr::Visitor<ExprVisitorResult> for Interpreter {
             }
         }
         return self.evaluate(&expr.right);
+    }
+
+    fn visit_call_expr(&mut self, expr: &Call) -> ExprVisitorResult {
+        let callee = self.evaluate(&expr.callee)?;
+        let mut arguments = Vec::new();
+        for argument in &expr.arguments {
+            arguments.push(self.evaluate(argument)?);
+        }
+        if let Literal::Callable(calleable) = callee {
+            if arguments.len() != calleable.arity() {
+                return Err(RuntimeError {
+                    message: format!(
+                        "Expected {}
+                     arguments but got {}.",
+                        calleable.arity(),
+                        arguments.len()
+                    ),
+                    token: expr.paren.clone(),
+                });
+            }
+            return Ok(calleable.call(self, arguments));
+        }
+        Err(RuntimeError {
+            message: "Can only call functions and classes.".to_string(),
+            token: expr.paren.clone(),
+        })
     }
 }
 

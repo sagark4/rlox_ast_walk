@@ -1,15 +1,17 @@
 use interpreter::{Interpreter, RuntimeError};
+use lox_callable::LoxCallable;
 use parser::Parser;
 use scanner::Scanner;
 use std::env;
 use std::fs::File;
 use std::io::{Read, Write};
-use token::Token;
+use token::{Literal, Token};
 
 use crate::token_type::TokenType;
 mod environment_stack;
 mod expr;
 mod interpreter;
+mod lox_callable;
 mod parser;
 mod scanner;
 mod stmt;
@@ -40,7 +42,7 @@ fn run_file(file_name: &str) {
     file.read_to_string(&mut file_contents)
         .expect(&format!("Error reading the file: {file_name}."));
 
-    let mut interpreter = Interpreter::new();
+    let mut interpreter = get_interpreter();
     run(&file_contents, &mut interpreter);
     unsafe {
         if HAD_ERROR {
@@ -74,7 +76,7 @@ fn run(source: &str, interpreter: &mut Interpreter) {
 
 fn run_prompt() {
     let stdin = std::io::stdin();
-    let mut interpreter = Interpreter::new();
+    let mut interpreter = get_interpreter();
     loop {
         print!("> ");
         _ = std::io::stdout().flush().unwrap();
@@ -114,4 +116,10 @@ pub(crate) fn runtime_error(error: &RuntimeError) {
     unsafe {
         HAD_RUNTIME_ERROR = true;
     }
+}
+
+fn get_interpreter() -> Interpreter {
+    let mut interpreter = Interpreter::new();
+    interpreter.define_global("clock".to_string(), Literal::Callable(LoxCallable::Clock));
+    interpreter
 }

@@ -19,6 +19,10 @@ impl EnvironmentStack {
         self.stack.last_mut().unwrap().insert(name, value);
     }
 
+    pub(crate) fn define_global(&mut self, name: String, value: Literal) {
+        self.stack.first_mut().unwrap().insert(name, value);
+    }
+
     pub(crate) fn get(&self, name: &Token) -> Result<Literal, RuntimeError> {
         for env in self.stack.iter().rev() {
             if let Some(literal) = env.get(&name.lexeme) {

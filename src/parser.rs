@@ -1,8 +1,9 @@
 use crate::error_with_token;
 use crate::expr::Expr::{
-    AssignExpr, BinaryExpr, GroupingExpr, LiteralExprExpr, LogicalExpr, UnaryExpr, VariableExpr,
+    AssignExpr, BinaryExpr, CallExpr, GroupingExpr, LiteralExprExpr, LogicalExpr, UnaryExpr,
+    VariableExpr,
 };
-use crate::expr::{Assign, Binary, Expr, Grouping, LiteralExpr, Logical, Unary, Variable};
+use crate::expr::{Assign, Binary, Call, Expr, Grouping, LiteralExpr, Logical, Unary, Variable};
 use crate::stmt::Stmt::{BlockStmt, ExpressionStmt, IfStmt, PrintStmt, VarStmt, WhileStmt};
 use crate::stmt::{Block, Expression, If, Print, Stmt, Var, While};
 use crate::token::{
@@ -92,7 +93,7 @@ impl Parser {
         self.consume(RightParen, "Expect ')' after for clauses.")?;
 
         let mut body = self.statement()?;
-        
+
         if let Some(incr_expr) = increment {
             body = BlockStmt(Block::new(vec![
                 body,
@@ -278,8 +279,42 @@ impl Parser {
             let right = self.unary()?;
             Ok(UnaryExpr(Unary::new(operator.clone(), right)))
         } else {
-            self.primary()
+            self.call()
         }
+    }
+
+    fn call(&mut self) -> ExprResult {
+        let mut expr = self.primary()?;
+
+        loop {
+            if self.match_next_token_type(vec![LeftParen]) {
+                expr = self.finish_call(expr)?;
+            } else {
+                break;
+            }
+        }
+
+        Ok(expr)
+    }
+
+    fn finish_call(&mut self, callee: Expr) -> ExprResult {
+        let mut arguments = Vec::new();
+
+        if !self.check_type(RightParen) {
+            loop {
+                if arguments.len() >= 255 {
+                    self.error(self.peek(), "Can't have more than 255 arguments.");
+                }
+                arguments.push(self.expression()?);
+                if !self.match_next_token_type(vec![Comma]) {
+                    break;
+                }
+            }
+        }
+
+        let paren = self.consume(RightParen, "Expect ')' after arguments.")?;
+
+        Ok(CallExpr(Call::new(callee, paren, arguments)))
     }
 
     fn primary(&mut self) -> ExprResult {

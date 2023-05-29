@@ -8,6 +8,7 @@ pub(crate) enum Expr {
     UnaryExpr(Box<Unary>),
     VariableExpr(Box<Variable>),
     AssignExpr(Box<Assign>),
+    LogicalExpr(Box<Logical>),
 }
 
 impl Expr {
@@ -19,6 +20,7 @@ impl Expr {
             Expr::UnaryExpr(expr) => visitor.visit_unary_expr(expr),
             Expr::VariableExpr(expr) => visitor.visit_variable_expr(expr),
             Expr::AssignExpr(expr) => visitor.visit_assign_expr(expr),
+            Expr::LogicalExpr(expr) => visitor.visit_logical_expr(expr),
         }
     }
 }
@@ -29,6 +31,7 @@ pub(crate) trait Visitor<R> {
     fn visit_unary_expr(&mut self, expr: &Unary) -> R;
     fn visit_variable_expr(&mut self, expr: &Variable) -> R;
     fn visit_assign_expr(&mut self, expr: &Assign) -> R;
+    fn visit_logical_expr(&mut self, expr: &Logical) -> R;
 }
 
 pub(crate) struct Binary {
@@ -96,5 +99,21 @@ pub(crate) struct Assign {
 impl Assign {
     pub(crate) fn new(name: Token, value: Expr) -> Box<Self> {
         Box::new(Self { name, value })
+    }
+}
+
+pub(crate) struct Logical {
+    pub(crate) left: Expr,
+    pub(crate) operator: Token,
+    pub(crate) right: Expr,
+}
+
+impl Logical {
+    pub(crate) fn new(left: Expr, operator: Token, right: Expr) -> Box<Self> {
+        Box::new(Self {
+            left,
+            operator,
+            right,
+        })
     }
 }

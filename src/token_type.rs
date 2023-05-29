@@ -24,9 +24,9 @@ pub(crate) enum TokenType {
     LessEqual,
 
     // Literals.
-    IdentifierLiteralToken,
-    StringLiteralToken,
-    NumberLiteralToken,
+    Identifier,
+    StringToken,
+    Number,
 
     // Keywords.
     And,

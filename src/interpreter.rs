@@ -1,6 +1,6 @@
 use crate::environment::Environment;
-use crate::expr::{self, Assign, Binary, Expr, Grouping, LiteralExpr, Unary, Variable};
-use crate::stmt::{Block, Expression, Print, Stmt, Var};
+use crate::expr::{self, Assign, Binary, Expr, Grouping, LiteralExpr, Logical, Unary, Variable};
+use crate::stmt::{Block, Expression, If, Print, Stmt, Var};
 use crate::token::{Literal, Token};
 use crate::token_type::TokenType::*;
 use crate::{runtime_error, stmt};
@@ -150,6 +150,20 @@ impl expr::Visitor<ExprVisitorResult> for Interpreter {
         self.environment.assign(&expr.name, value.clone())?;
         Ok(value)
     }
+
+    fn visit_logical_expr(&mut self, expr: &Logical) -> ExprVisitorResult {
+        let left = self.evaluate(&expr.left)?;
+        if expr.operator.token_type == Or {
+            if left.is_truthy() {
+                return Ok(left);
+            }
+        } else {
+            if !left.is_truthy() {
+                return Ok(left);
+            }
+        }
+        return self.evaluate(&expr.right);
+    }
 }
 
 impl stmt::Visitor<StmtVisitorResult> for Interpreter {
@@ -173,5 +187,15 @@ impl stmt::Visitor<StmtVisitorResult> for Interpreter {
     fn visit_block_stmt(&mut self, stmt: &Block) -> StmtVisitorResult {
         self.execute_block(&stmt.statements)?;
         Ok(())
+    }
+
+    fn visit_if_stmt(&mut self, stmt: &If) -> StmtVisitorResult {
+        if self.evaluate(&stmt.condition)?.is_truthy() {
+            self.execute(&stmt.then_branch)
+        } else if let Some(else_stmt) = &stmt.else_branch {
+            self.execute(else_stmt)
+        } else {
+            Ok(())
+        }
     }
 }

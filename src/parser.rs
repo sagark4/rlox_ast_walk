@@ -1,10 +1,10 @@
 use crate::error_with_token;
 use crate::expr::Expr::{
-    AssignExpr, BinaryExpr, GroupingExpr, LiteralExprExpr, UnaryExpr, VariableExpr,
+    AssignExpr, BinaryExpr, GroupingExpr, LiteralExprExpr, LogicalExpr, UnaryExpr, VariableExpr,
 };
-use crate::expr::{Assign, Binary, Expr, Grouping, LiteralExpr, Unary, Variable};
-use crate::stmt::Stmt::{BlockStmt, ExpressionStmt, PrintStmt, VarStmt};
-use crate::stmt::{Block, Expression, Print, Stmt, Var};
+use crate::expr::{Assign, Binary, Expr, Grouping, LiteralExpr, Logical, Unary, Variable};
+use crate::stmt::Stmt::{BlockStmt, ExpressionStmt, IfStmt, PrintStmt, VarStmt};
+use crate::stmt::{Block, Expression, If, Print, Stmt, Var};
 use crate::token::{
     Literal::{self, *},
     Token,
@@ -50,13 +50,27 @@ impl Parser {
     }
 
     fn statement(&mut self) -> StmtResult {
-        if self.match_next_token_type(vec![Print]) {
+        if self.match_next_token_type(vec![If]) {
+            self.if_statement()
+        } else if self.match_next_token_type(vec![Print]) {
             self.print_statement()
         } else if self.match_next_token_type(vec![LeftBrace]) {
             self.block()
         } else {
             self.expression_statement()
         }
+    }
+
+    fn if_statement(&mut self) -> StmtResult {
+        self.consume(LeftParen, "Expect '(' after 'if'.")?;
+        let condition = self.expression()?;
+        self.consume(RightParen, "Expect ')' after if condition.")?;
+        let then_branch = self.statement()?;
+        let mut else_branch = None;
+        if self.match_next_token_type(vec![Else]) {
+            else_branch = Some(self.statement()?);
+        }
+        Ok(IfStmt(If::new(condition, then_branch, else_branch)))
     }
 
     fn print_statement(&mut self) -> StmtResult {
@@ -66,7 +80,7 @@ impl Parser {
     }
 
     fn var_declaration(&mut self) -> StmtResult {
-        let name = self.consume(IdentifierLiteralToken, "Expect variable name.")?;
+        let name = self.consume(Identifier, "Expect variable name.")?;
         let mut initializer: Expr = LiteralExprExpr(LiteralExpr::new(Literal::NoneLiteral));
         if self.match_next_token_type(vec![Equal]) {
             initializer = self.expression()?;
@@ -91,7 +105,7 @@ impl Parser {
     }
 
     fn assignment(&mut self) -> ExprResult {
-        let expr = self.equality()?;
+        let expr = self.or()?;
         if self.match_next_token_type(vec![Equal]) {
             let equals = self.previous();
             let value = self.assignment()?;
@@ -105,6 +119,26 @@ impl Parser {
         }
     }
 
+    fn or(&mut self) -> ExprResult {
+        let mut expr = self.and()?;
+        while self.match_next_token_type(vec![Or]) {
+            let operator = self.previous();
+            let right = self.and()?;
+            expr = LogicalExpr(Logical::new(expr, operator.clone(), right));
+        }
+        Ok(expr)
+    }
+
+    fn and(&mut self) -> ExprResult {
+        let mut expr = self.equality()?;
+        while self.match_next_token_type(vec![And]) {
+            let operator = self.previous();
+            let right = self.equality()?;
+            expr = LogicalExpr(Logical::new(expr, operator.clone(), right));
+        }
+        Ok(expr)
+    }
+
     fn equality(&mut self) -> ExprResult {
         let mut expr = self.comparison()?;
         while self.match_next_token_type(vec![BangEqual, EqualEqual]) {
@@ -114,6 +148,7 @@ impl Parser {
         }
         Ok(expr)
     }
+
     fn match_next_token_type(&mut self, token_types: Vec<TokenType>) -> bool {
         for token_type in token_types {
             if self.check_type(token_type) {
@@ -123,6 +158,7 @@ impl Parser {
         }
         return false;
     }
+
     fn check_type(&mut self, token_type: TokenType) -> bool {
         if self.is_at_end() {
             false
@@ -130,21 +166,26 @@ impl Parser {
             self.peek().token_type == token_type
         }
     }
+
     fn advance(&mut self) -> Token {
         if !self.is_at_end() {
             self.current += 1
         }
         return self.previous();
     }
+
     fn is_at_end(&self) -> bool {
         self.peek().token_type == Eof
     }
+
     fn peek(&self) -> &Token {
         &self.tokens[self.current]
     }
+
     fn previous(&self) -> Token {
         self.tokens[self.current - 1].clone()
     }
+
     fn comparison(&mut self) -> ExprResult {
         let mut expr = self.term()?;
         while self.match_next_token_type(vec![Greater, GreaterEqual, Less, LessEqual]) {
@@ -154,6 +195,7 @@ impl Parser {
         }
         Ok(expr)
     }
+
     fn term(&mut self) -> ExprResult {
         let mut expr = self.factor()?;
         while self.match_next_token_type(vec![Minus, Plus]) {
@@ -163,6 +205,7 @@ impl Parser {
         }
         Ok(expr)
     }
+
     fn factor(&mut self) -> ExprResult {
         let mut expr = self.unary()?;
         while self.match_next_token_type(vec![Slash, Star]) {
@@ -172,6 +215,7 @@ impl Parser {
         }
         Ok(expr)
     }
+
     fn unary(&mut self) -> ExprResult {
         if self.match_next_token_type(vec![Bang, Minus]) {
             let operator = self.previous();
@@ -181,6 +225,7 @@ impl Parser {
             self.primary()
         }
     }
+
     fn primary(&mut self) -> ExprResult {
         if self.match_next_token_type(vec![False]) {
             return Ok(LiteralExprExpr(LiteralExpr::new(BoolLiteral(false))));
@@ -191,10 +236,10 @@ impl Parser {
         if self.match_next_token_type(vec![NilTokenType]) {
             return Ok(LiteralExprExpr(LiteralExpr::new(NoneLiteral)));
         }
-        if self.match_next_token_type(vec![NumberLiteralToken, StringLiteralToken]) {
+        if self.match_next_token_type(vec![Number, StringToken]) {
             return Ok(LiteralExprExpr(LiteralExpr::new(self.previous().literal)));
         }
-        if self.match_next_token_type(vec![IdentifierLiteralToken]) {
+        if self.match_next_token_type(vec![Identifier]) {
             return Ok(VariableExpr(Variable::new(self.previous())));
         }
         if self.match_next_token_type(vec![LeftParen]) {

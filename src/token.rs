@@ -11,7 +11,7 @@ impl Literal {
         match self {
             Self::NoneLiteral => false,
             Self::BoolLiteral(bool_val) => *bool_val,
-            _ => false,
+            _ => true,
         }
     }
 

@@ -130,7 +130,7 @@ impl Scanner {
         let token_slice = &self.source_chars[self.start..self.current];
         let text: String = token_slice.into_iter().collect();
         match self.keywords.get(&text) {
-            None => self.add_token_null_literal(IdentifierLiteralToken),
+            None => self.add_token_null_literal(Identifier),
             Some(id) => self.add_token_null_literal(*id),
         }
     }
@@ -153,7 +153,7 @@ impl Scanner {
         let token_slice = &self.source_chars[self.start..self.current];
         let number_text: String = token_slice.into_iter().collect();
 
-        self.add_token(NumberLiteralToken, Float(number_text.parse().unwrap()));
+        self.add_token(Number, Float(number_text.parse().unwrap()));
     }
 
     fn handle_string(&mut self) {
@@ -175,7 +175,7 @@ impl Scanner {
         // Trim the surrounding quotes.
         let token_slice = &self.source_chars[self.start + 1..self.current - 1];
         let value: String = token_slice.into_iter().collect();
-        self.add_token(StringLiteralToken, StringLiteral(value));
+        self.add_token(StringToken, StringLiteral(value));
     }
 
     fn match_cur(&mut self, expected: char) -> bool {

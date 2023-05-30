@@ -10,6 +10,7 @@ pub(crate) enum Stmt {
     IfStmt(Box<If>),
     WhileStmt(Box<While>),
     FunctionStmt(Rc<Function>),
+    ReturnStmt(Box<Return>),
 }
 
 impl Stmt {
@@ -22,6 +23,7 @@ impl Stmt {
             Stmt::IfStmt(stmt) => visitor.visit_if_stmt(stmt),
             Stmt::WhileStmt(stmt) => visitor.visit_while_stmt(stmt),
             Stmt::FunctionStmt(stmt) => visitor.visit_function_stmt(stmt.clone()),
+            Stmt::ReturnStmt(stmt) => visitor.visit_return_stmt(stmt),
         }
     }
 }
@@ -33,6 +35,7 @@ pub(crate) trait Visitor<R> {
     fn visit_if_stmt(&mut self, stmt: &If) -> R;
     fn visit_while_stmt(&mut self, stmt: &While) -> R;
     fn visit_function_stmt(&mut self, stmt: Rc<Function>) -> R;
+    fn visit_return_stmt(&mut self, stmt: &Return) -> R;
 }
 
 pub(crate) struct Expression {
@@ -115,5 +118,16 @@ pub(crate) struct Function {
 impl Function {
     pub(crate) fn new(name: Token, params: Vec<Token>, body: Vec<Stmt>) -> Rc<Self> {
         Rc::new(Self { name, params, body })
+    }
+}
+
+pub(crate) struct Return {
+    pub(crate) keyword: Token,
+    pub(crate) value: Expr,
+}
+
+impl Return {
+    pub(crate) fn new(keyword: Token, value: Expr) -> Box<Self> {
+        Box::new(Self { keyword, value })
     }
 }

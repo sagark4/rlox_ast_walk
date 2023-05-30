@@ -32,7 +32,11 @@ impl LoxCallable {
                         .define(fun.params[i].lexeme.clone(), arguments[i].clone());
                 }
                 for statement in &fun.body {
-                    interpreter.execute(statement)?
+                    if let Err(err) = interpreter.execute(statement) {
+                        if err.return_flag {
+                            return Ok(interpreter.return_value.take().unwrap());
+                        }
+                    }
                 }
                 Ok(Literal::NoneLiteral)
             }

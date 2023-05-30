@@ -5,9 +5,9 @@ use crate::expr::Expr::{
 };
 use crate::expr::{Assign, Binary, Call, Expr, Grouping, LiteralExpr, Logical, Unary, Variable};
 use crate::stmt::Stmt::{
-    BlockStmt, ExpressionStmt, FunctionStmt, IfStmt, PrintStmt, VarStmt, WhileStmt,
+    BlockStmt, ExpressionStmt, FunctionStmt, IfStmt, PrintStmt, ReturnStmt, VarStmt, WhileStmt,
 };
-use crate::stmt::{Block, Expression, Function, If, Print, Stmt, Var, While};
+use crate::stmt::{Block, Expression, Function, If, Print, Return, Stmt, Var, While};
 use crate::token::{
     Literal::{self, *},
     Token,
@@ -62,6 +62,8 @@ impl Parser {
             self.if_statement()
         } else if self.match_next_token_type(vec![Print]) {
             self.print_statement()
+        } else if self.match_next_token_type(vec![Return]) {
+            self.return_statement()
         } else if self.match_next_token_type(vec![While]) {
             self.while_statement()
         } else if self.match_next_token_type(vec![LeftBrace]) {
@@ -140,6 +142,18 @@ impl Parser {
         let value = self.expression()?;
         self.consume(Semicolon, "Expect ';' after value.")?;
         Ok(PrintStmt(Print::new(value)))
+    }
+
+    fn return_statement(&mut self) -> StmtResult {
+        let keyword = self.previous();
+        let value: Expr;
+        if !self.check_type(Semicolon) {
+            value = self.expression()?
+        } else {
+            value = LiteralExprExpr(LiteralExpr::new(NoneLiteral));
+        }
+        self.consume(Semicolon, "Expect ';' after return value.")?;
+        Ok(ReturnStmt(Return::new(keyword, value)))
     }
 
     fn var_declaration(&mut self) -> StmtResult {

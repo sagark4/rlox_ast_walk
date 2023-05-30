@@ -3,23 +3,25 @@ use crate::expr::{
     self, Assign, Binary, Call, Expr, Grouping, LiteralExpr, Logical, Unary, Variable,
 };
 use crate::lox_callable::LoxCallable;
-use crate::stmt::{Block, Expression, Function, If, Print, Stmt, Var, While};
+use crate::stmt::{Block, Expression, Function, If, Print, Return, Stmt, Var, While};
 use crate::token::{Literal, Token};
 use crate::token_type::TokenType::*;
 use crate::{runtime_error, stmt};
 use std::borrow::Borrow;
 use std::rc::Rc;
 
-pub(crate) type ExprVisitorResult = Result<Literal, RuntimeError>;
-type StmtVisitorResult = Result<(), RuntimeError>;
+pub(crate) type ExprVisitorResult = Result<Literal, RuntimeErrorOrReturn>;
+type StmtVisitorResult = Result<(), RuntimeErrorOrReturn>;
 
 pub(crate) struct Interpreter {
     pub(crate) env_stack: EnvironmentStack,
+    pub(crate) return_value: Option<Literal>,
 }
 impl Interpreter {
     pub(crate) fn new() -> Self {
         Self {
             env_stack: EnvironmentStack::new(),
+            return_value: None,
         }
     }
 
@@ -35,7 +37,7 @@ impl Interpreter {
         stmt.accept(self)
     }
 
-    pub(crate) fn interpret(&mut self, statements: Vec<Stmt>) -> Result<(), RuntimeError> {
+    pub(crate) fn interpret(&mut self, statements: Vec<Stmt>) -> Result<(), RuntimeErrorOrReturn> {
         for statement in &statements {
             if let Err(err) = self.execute(statement) {
                 runtime_error(&err);
@@ -61,15 +63,17 @@ impl Interpreter {
     }
 }
 
-pub(crate) struct RuntimeError {
+pub(crate) struct RuntimeErrorOrReturn {
     pub(crate) message: String,
     pub(crate) token: Token,
+    pub(crate) return_flag: bool,
 }
 
 fn construct_error(message: &str, token: &Token) -> ExprVisitorResult {
-    Err(RuntimeError {
+    Err(RuntimeErrorOrReturn {
         message: String::from(message),
         token: token.clone(),
+        return_flag: false,
     })
 }
 
@@ -165,7 +169,7 @@ impl expr::Visitor<ExprVisitorResult> for Interpreter {
         }
         if let Literal::Callable(calleable) = callee {
             if arguments.len() != calleable.arity() {
-                return Err(RuntimeError {
+                return Err(RuntimeErrorOrReturn {
                     message: format!(
                         "Expected {}
                      arguments but got {}.",
@@ -173,13 +177,15 @@ impl expr::Visitor<ExprVisitorResult> for Interpreter {
                         arguments.len()
                     ),
                     token: expr.paren.clone(),
+                    return_flag: false,
                 });
             }
             return calleable.call(self, arguments);
         }
-        Err(RuntimeError {
+        Err(RuntimeErrorOrReturn {
             message: "Can only call functions and classes.".to_string(),
             token: expr.paren.clone(),
+            return_flag: false,
         })
     }
 }
@@ -234,5 +240,14 @@ impl stmt::Visitor<StmtVisitorResult> for Interpreter {
             Literal::Callable(LoxCallable::UserFunction(stmt)),
         );
         Ok(())
+    }
+
+    fn visit_return_stmt(&mut self, stmt: &Return) -> StmtVisitorResult {
+        self.return_value = Some(self.evaluate(&stmt.value)?);
+        Err(RuntimeErrorOrReturn {
+            message: String::new(),
+            token: stmt.keyword.clone(),
+            return_flag: true,
+        })
     }
 }

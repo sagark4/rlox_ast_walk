@@ -1,4 +1,4 @@
-use interpreter::{Interpreter, RuntimeError};
+use interpreter::{Interpreter, RuntimeErrorOrReturn};
 use lox_callable::LoxCallable;
 use parser::Parser;
 use scanner::Scanner;
@@ -111,7 +111,7 @@ pub(crate) fn error_with_token(token: &Token, message: &str) {
     }
 }
 
-pub(crate) fn runtime_error(error: &RuntimeError) {
+pub(crate) fn runtime_error(error: &RuntimeErrorOrReturn) {
     eprintln!("[line {}] Error: {}", error.token.line, error.message);
     unsafe {
         HAD_RUNTIME_ERROR = true;

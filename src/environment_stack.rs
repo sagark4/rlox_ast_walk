@@ -1,5 +1,5 @@
 use crate::{
-    interpreter::RuntimeError,
+    interpreter::RuntimeErrorOrReturn,
     token::{Literal, Token},
 };
 use std::collections::HashMap;
@@ -25,7 +25,7 @@ impl EnvironmentStack {
         self.stack.first_mut().unwrap().insert(name, value);
     }
 
-    pub(crate) fn get(&self, name: &Token) -> Result<Literal, RuntimeError> {
+    pub(crate) fn get(&self, name: &Token) -> Result<Literal, RuntimeErrorOrReturn> {
         if let Some(literal) = self.stack.last().unwrap().get(&name.lexeme) {
             return Ok(literal.clone());
         }
@@ -36,13 +36,18 @@ impl EnvironmentStack {
             }
         }
 
-        return Err(RuntimeError {
+        return Err(RuntimeErrorOrReturn {
             message: format!("Undefined variable '{}'.", &name.lexeme),
             token: name.clone(),
+            return_flag: false,
         });
     }
 
-    pub(crate) fn assign(&mut self, name: &Token, value: Literal) -> Result<(), RuntimeError> {
+    pub(crate) fn assign(
+        &mut self,
+        name: &Token,
+        value: Literal,
+    ) -> Result<(), RuntimeErrorOrReturn> {
         let env = self.stack.last_mut().unwrap();
         if env.contains_key(&name.lexeme) {
             env.insert(name.lexeme.clone(), value);
@@ -55,9 +60,10 @@ impl EnvironmentStack {
                 return Ok(());
             }
         }
-        return Err(RuntimeError {
+        return Err(RuntimeErrorOrReturn {
             message: format!("Undefined variable '{}'.", name.lexeme),
             token: name.clone(),
+            return_flag: false,
         });
     }
 

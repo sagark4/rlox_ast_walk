@@ -34,10 +34,12 @@ impl LoxCallable {
                 for statement in &fun.body {
                     if let Err(err) = interpreter.execute(statement) {
                         if err.return_flag {
+                            interpreter.env_stack.pop();
                             return Ok(interpreter.return_value.take().unwrap());
                         }
                     }
                 }
+                interpreter.env_stack.pop();
                 Ok(Literal::NoneLiteral)
             }
         }

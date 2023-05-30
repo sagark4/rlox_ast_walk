@@ -1,0 +1,12 @@
+fun f(fp) {
+  var j = fp;
+  fun inn(innp) {
+    print innp * j;
+  }
+  return inn;
+}
+
+var f1 = f(1);
+f1(42);
+var f2 = f(2);
+f2(42);

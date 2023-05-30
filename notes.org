@@ -1,0 +1,6 @@
+* Testing
+../../repos/craftinginterpreters/test/operator/equals_method.lox
+1c1 < true --- > false
+
+../../repos/craftinginterpreters/test/operator/equals_class.lox
+1d0 < true 4c3,4 < true --- > false > false

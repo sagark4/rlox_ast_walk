@@ -108,7 +108,7 @@ impl Scanner {
             ' ' => (),
             '\r' => (),
             '\t' => (),
-            '\n' => (),
+            '\n' => self.line += 1,
             '"' => self.handle_string(),
             r => {
                 if is_numeric(r) {

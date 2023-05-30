@@ -1,13 +1,32 @@
-use crate::{token_type::TokenType, lox_callable::LoxCallable};
+use std::{cell::RefCell, rc::Rc};
+
+use crate::{lox_callable::LoxCallable, lox_instance::LoxInstance, token_type::TokenType};
 #[derive(Clone)]
 pub(crate) enum Literal {
     Float(f64),
     StringLiteral(String),
     BoolLiteral(bool),
     NoneLiteral,
-    Callable(LoxCallable)
+    Callable(LoxCallable),
+    Instance(Rc<RefCell<LoxInstance>>),
 }
 impl Literal {
+    pub(crate) fn stringify(&self) -> String {
+        match self {
+            Literal::NoneLiteral => String::from("nil"),
+            Literal::BoolLiteral(b) => format!("{}", b),
+            Literal::Float(f) => {
+                if f.fract() == 0.0 {
+                    format!("{}", *f as i32)
+                } else {
+                    format!("{}", f)
+                }
+            }
+            Literal::StringLiteral(s) => s.clone(),
+            Literal::Callable(callable) => callable.stringify(),
+            Literal::Instance(inst) => (*inst).borrow().stringify(),
+        }
+    }
     pub(crate) fn is_truthy(&self) -> bool {
         match self {
             Self::NoneLiteral => false,

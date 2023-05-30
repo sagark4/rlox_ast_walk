@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use crate::token::Literal;
 use crate::token::Token;
 
@@ -6,10 +8,14 @@ pub(crate) enum Expr {
     GroupingExpr(Box<Grouping>),
     LiteralExprExpr(Box<LiteralExpr>),
     UnaryExpr(Box<Unary>),
-    VariableExpr(Box<Variable>),
+    VariableExpr(Rc<Variable>),
     AssignExpr(Box<Assign>),
     LogicalExpr(Box<Logical>),
     CallExpr(Box<Call>),
+    GetExpr(Box<Get>),
+    SetExpr(Box<Set>),
+    ThisExpr(Box<This>),
+    SuperExpr(Box<Super>),
 }
 
 impl Expr {
@@ -23,6 +29,10 @@ impl Expr {
             Expr::AssignExpr(expr) => visitor.visit_assign_expr(expr),
             Expr::LogicalExpr(expr) => visitor.visit_logical_expr(expr),
             Expr::CallExpr(expr) => visitor.visit_call_expr(expr),
+            Expr::GetExpr(expr) => visitor.visit_get_expr(expr),
+            Expr::SetExpr(expr) => visitor.visit_set_expr(expr),
+            Expr::ThisExpr(expr) => visitor.visit_this_expr(expr),
+            Expr::SuperExpr(expr) => visitor.visit_super_expr(expr),
         }
     }
 }
@@ -35,6 +45,10 @@ pub(crate) trait Visitor<R> {
     fn visit_assign_expr(&mut self, expr: &Assign) -> R;
     fn visit_logical_expr(&mut self, expr: &Logical) -> R;
     fn visit_call_expr(&mut self, expr: &Call) -> R;
+    fn visit_get_expr(&mut self, expr: &Get) -> R;
+    fn visit_set_expr(&mut self, expr: &Set) -> R;
+    fn visit_this_expr(&mut self, expr: &This) -> R;
+    fn visit_super_expr(&mut self, expr: &Super) -> R;
 }
 
 pub(crate) struct Binary {
@@ -86,22 +100,24 @@ impl Unary {
 
 pub(crate) struct Variable {
     pub(crate) name: Token,
+    pub(crate) id: usize,
 }
 
 impl Variable {
-    pub(crate) fn new(name: Token) -> Box<Self> {
-        Box::new(Self { name })
+    pub(crate) fn new(name: Token, id: usize) -> Rc<Self> {
+        Rc::new(Self { name, id })
     }
 }
 
 pub(crate) struct Assign {
     pub(crate) name: Token,
     pub(crate) value: Expr,
+    pub(crate) id: usize,
 }
 
 impl Assign {
-    pub(crate) fn new(name: Token, value: Expr) -> Box<Self> {
-        Box::new(Self { name, value })
+    pub(crate) fn new(name: Token, value: Expr, id: usize) -> Box<Self> {
+        Box::new(Self { name, value, id })
     }
 }
 
@@ -121,7 +137,6 @@ impl Logical {
     }
 }
 
-
 pub(crate) struct Call {
     pub(crate) callee: Expr,
     pub(crate) paren: Token,
@@ -134,6 +149,60 @@ impl Call {
             callee,
             paren,
             arguments,
+        })
+    }
+}
+
+pub(crate) struct Get {
+    pub(crate) object: Expr,
+    pub(crate) name: Token,
+}
+
+impl Get {
+    pub(crate) fn new(object: Expr, name: Token) -> Box<Self> {
+        Box::new(Self { object, name })
+    }
+}
+
+pub(crate) struct Set {
+    pub(crate) object: Expr,
+    pub(crate) name: Token,
+    pub(crate) value: Expr,
+}
+
+impl Set {
+    pub(crate) fn new(object: Expr, name: Token, value: Expr) -> Box<Self> {
+        Box::new(Self {
+            object,
+            name,
+            value,
+        })
+    }
+}
+
+pub(crate) struct This {
+    pub(crate) keyword: Token,
+    pub(crate) id: usize,
+}
+
+impl This {
+    pub(crate) fn new(keyword: Token, id: usize) -> Box<Self> {
+        Box::new(Self { keyword, id })
+    }
+}
+
+pub(crate) struct Super {
+    pub(crate) keyword: Token,
+    pub(crate) method: Token,
+    pub(crate) id: usize,
+}
+
+impl Super {
+    pub(crate) fn new(keyword: Token, method: Token, id: usize) -> Box<Self> {
+        Box::new(Self {
+            keyword,
+            method,
+            id,
         })
     }
 }

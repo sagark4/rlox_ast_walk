@@ -1,6 +1,9 @@
 use std::rc::Rc;
 
-use crate::{expr::Expr, token::Token};
+use crate::{
+    expr::{Expr, Variable},
+    token::Token,
+};
 
 pub(crate) enum Stmt {
     ExpressionStmt(Box<Expression>),
@@ -11,6 +14,7 @@ pub(crate) enum Stmt {
     WhileStmt(Box<While>),
     FunctionStmt(Rc<Function>),
     ReturnStmt(Box<Return>),
+    ClassStmt(Rc<Class>),
 }
 
 impl Stmt {
@@ -24,6 +28,7 @@ impl Stmt {
             Stmt::WhileStmt(stmt) => visitor.visit_while_stmt(stmt),
             Stmt::FunctionStmt(stmt) => visitor.visit_function_stmt(stmt.clone()),
             Stmt::ReturnStmt(stmt) => visitor.visit_return_stmt(stmt),
+            Stmt::ClassStmt(stmt) => visitor.visit_class_stmt(stmt.clone()),
         }
     }
 }
@@ -36,6 +41,7 @@ pub(crate) trait Visitor<R> {
     fn visit_while_stmt(&mut self, stmt: &While) -> R;
     fn visit_function_stmt(&mut self, stmt: Rc<Function>) -> R;
     fn visit_return_stmt(&mut self, stmt: &Return) -> R;
+    fn visit_class_stmt(&mut self, stmt: Rc<Class>) -> R;
 }
 
 pub(crate) struct Expression {
@@ -129,5 +135,25 @@ pub(crate) struct Return {
 impl Return {
     pub(crate) fn new(keyword: Token, value: Expr) -> Box<Self> {
         Box::new(Self { keyword, value })
+    }
+}
+
+pub(crate) struct Class {
+    pub(crate) name: Token,
+    pub(crate) superclass: Option<Rc<Variable>>,
+    pub(crate) methods: Vec<Rc<Function>>,
+}
+
+impl Class {
+    pub(crate) fn new(
+        name: Token,
+        superclass: Option<Rc<Variable>>,
+        methods: Vec<Rc<Function>>,
+    ) -> Rc<Self> {
+        Rc::new(Self {
+            name,
+            superclass,
+            methods,
+        })
     }
 }

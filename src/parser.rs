@@ -1,11 +1,16 @@
-use crate::error_with_token;
+use std::rc::Rc;
+
 use crate::expr::Expr::{
-    AssignExpr, BinaryExpr, CallExpr, GroupingExpr, LiteralExprExpr, LogicalExpr, UnaryExpr,
-    VariableExpr,
+    AssignExpr, BinaryExpr, CallExpr, GetExpr, GroupingExpr, LiteralExprExpr, LogicalExpr, SetExpr,
+    SuperExpr, ThisExpr, UnaryExpr, VariableExpr,
 };
-use crate::expr::{Assign, Binary, Call, Expr, Grouping, LiteralExpr, Logical, Unary, Variable};
+use crate::expr::{
+    Assign, Binary, Call, Expr, Get, Grouping, LiteralExpr, Logical, Set, Super, This, Unary,
+    Variable,
+};
 use crate::stmt::Stmt::{
-    BlockStmt, ExpressionStmt, FunctionStmt, IfStmt, PrintStmt, ReturnStmt, VarStmt, WhileStmt,
+    BlockStmt, ClassStmt, ExpressionStmt, FunctionStmt, IfStmt, PrintStmt, ReturnStmt, VarStmt,
+    WhileStmt,
 };
 use crate::stmt::{Block, Expression, Function, If, Print, Return, Stmt, Var, While};
 use crate::token::{
@@ -13,9 +18,11 @@ use crate::token::{
     Token,
 };
 use crate::token_type::TokenType::{self, *};
+use crate::{error_with_token, stmt};
 
-pub(crate) struct Parser {
+pub(crate) struct Parser<'a> {
     tokens: Vec<Token>,
+    id_index: &'a mut usize,
     current: usize,
 }
 
@@ -23,9 +30,13 @@ pub(crate) struct ParseError;
 type ExprResult = Result<Expr, ParseError>;
 type StmtResult = Result<Stmt, ParseError>;
 type ParseResult = Result<Vec<Stmt>, ParseError>;
-impl Parser {
-    pub(crate) fn from(tokens: Vec<Token>) -> Self {
-        Self { tokens, current: 0 }
+impl<'a> Parser<'a> {
+    pub(crate) fn from(tokens: Vec<Token>, id_index: &'a mut usize) -> Self {
+        Self {
+            tokens,
+            id_index,
+            current: 0,
+        }
     }
 
     pub(crate) fn parse(&mut self) -> ParseResult {
@@ -41,18 +52,42 @@ impl Parser {
     }
 
     fn declaration(&mut self) -> StmtResult {
+        if self.match_next_token_type(vec![Class]) {
+            return self.class_declaration();
+        }
         if self.match_next_token_type(vec![Fun]) {
-            return self.function("function");
+            return Ok(FunctionStmt(self.function("function")?));
         }
         if self.match_next_token_type(vec![Var]) {
             return self.var_declaration();
         }
         let stmt_result = self.statement();
         match stmt_result {
-            Err(_) => self.synchronize(),
-            _ => (),
+            Err(_) => {
+                self.synchronize();
+                Ok(Stmt::ExpressionStmt(Expression::new(
+                    Expr::LiteralExprExpr(LiteralExpr::new(NoneLiteral)),
+                )))
+            }
+            _ => stmt_result,
         }
-        stmt_result
+    }
+
+    fn class_declaration(&mut self) -> StmtResult {
+        let name = self.consume(Identifier, "Expect class name.")?;
+        let mut superclass: Option<Rc<Variable>> = None;
+        if self.match_next_token_type(vec![Less]) {
+            self.consume(Identifier, "Expect superclass name.")?;
+            *self.id_index += 1;
+            superclass = Some(Variable::new(self.previous(), *self.id_index));
+        }
+        self.consume(LeftBrace, "Expect '{' before class body.")?;
+        let mut methods = Vec::new();
+        while !self.check_type(RightBrace) && !self.is_at_end() {
+            methods.push(self.function("method")?);
+        }
+        self.consume(RightBrace, "Expect '}' after class body.")?;
+        Ok(ClassStmt(stmt::Class::new(name, superclass, methods)))
     }
 
     fn statement(&mut self) -> StmtResult {
@@ -172,7 +207,7 @@ impl Parser {
         Ok(ExpressionStmt(Expression::new(expr)))
     }
 
-    fn function(&mut self, kind: &str) -> StmtResult {
+    fn function(&mut self, kind: &str) -> Result<Rc<Function>, ParseError> {
         let name = self.consume(Identifier, &format!("Expect {} name.", kind))?;
         self.consume(LeftParen, &format!("Expect '(' after {} name.", kind))?;
         let mut parameters = Vec::new();
@@ -193,7 +228,7 @@ impl Parser {
 
         self.consume(LeftBrace, &format!("Expect '{{' before {} body.", kind))?;
         let body = self.block()?;
-        Ok(FunctionStmt(Function::new(name, parameters, body)))
+        Ok(Function::new(name, parameters, body))
     }
 
     fn block(&mut self) -> ParseResult {
@@ -210,13 +245,20 @@ impl Parser {
         if self.match_next_token_type(vec![Equal]) {
             let equals = self.previous();
             let value = self.assignment()?;
-            if let VariableExpr(var_expr) = expr {
-                return Ok(AssignExpr(Assign::new(var_expr.name.clone(), value)));
-            } else {
-                return Err(self.error(&equals, "Invalid assignment target."));
+            match expr {
+                VariableExpr(var_expr) => {
+                    *self.id_index += 1;
+                    Ok(AssignExpr(Assign::new(
+                        var_expr.name.clone(),
+                        value,
+                        *self.id_index,
+                    )))
+                }
+                GetExpr(get_expr) => Ok(SetExpr(Set::new(get_expr.object, get_expr.name, value))),
+                _ => Err(self.error(&equals, "Invalid assignment target.")),
             }
         } else {
-            return Ok(expr);
+            Ok(expr)
         }
     }
 
@@ -270,7 +312,7 @@ impl Parser {
 
     fn advance(&mut self) -> Token {
         if !self.is_at_end() {
-            self.current += 1
+            self.current += 1;
         }
         return self.previous();
     }
@@ -333,6 +375,9 @@ impl Parser {
         loop {
             if self.match_next_token_type(vec![LeftParen]) {
                 expr = self.finish_call(expr)?;
+            } else if self.match_next_token_type(vec![Dot]) {
+                let name = self.consume(Identifier, "Expect property name after '.'.")?;
+                expr = Expr::GetExpr(Get::new(expr, name));
             } else {
                 break;
             }
@@ -374,14 +419,27 @@ impl Parser {
         if self.match_next_token_type(vec![Number, StringToken]) {
             return Ok(LiteralExprExpr(LiteralExpr::new(self.previous().literal)));
         }
+        if self.match_next_token_type(vec![Super]) {
+            let keyword = self.previous();
+            self.consume(Dot, "Expect '.' after 'super'.")?;
+            let method = self.consume(Identifier, "Expect superclass method name.")?;
+            *self.id_index += 1;
+            return Ok(SuperExpr(Super::new(keyword, method, *self.id_index)));
+        }
+        if self.match_next_token_type(vec![This]) {
+            *self.id_index += 1;
+            return Ok(ThisExpr(This::new(self.previous(), *self.id_index)));
+        }
         if self.match_next_token_type(vec![Identifier]) {
-            return Ok(VariableExpr(Variable::new(self.previous())));
+            *self.id_index += 1;
+            return Ok(VariableExpr(Variable::new(self.previous(), *self.id_index)));
         }
         if self.match_next_token_type(vec![LeftParen]) {
             let expr = self.expression()?;
             self.consume(RightParen, "Expect ')' after expression.")?;
             return Ok(GroupingExpr(Grouping::new(expr)));
         }
+        error_with_token(self.peek(), "Expect expression.");
         Err(ParseError {})
     }
 
